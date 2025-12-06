@@ -1,65 +1,112 @@
-import Image from "next/image";
+"use client";
+
+import Link from "next/link";
+import { Shell } from "./components/Shell";
+import { Badge } from "./components/ui";
+import { admins } from "./lib/dummyData";
+
+const modules = [
+  { title: "Dashboard", desc: "Ringkasan produk, transaksi, dan stok menipis", href: "/dashboard" },
+  { title: "Produk & Stok", desc: "List produk, tambah/edit, detail produk", href: "/products" },
+  { title: "Pemesanan", desc: "Order list, detail, konfirmasi pembayaran", href: "/orders" },
+  { title: "Pembayaran", desc: "Instruksi bayar + upload bukti transfer", href: "/payments" },
+  { title: "Laporan", desc: "Laporan penjualan & persediaan, export/print", href: "/reports" },
+  { title: "Settings", desc: "Info toko, rekening, branding, activity log", href: "/settings" },
+];
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <Shell active="auth" showQuickInfo={false}>
+      <section className="space-y-8">
+        <div className="grid items-center gap-6 lg:grid-cols-[1.1fr,0.9fr]">
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-3 rounded-full bg-amber-100 px-4 py-2 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">
+              SparX Parts · Masuk terlebih dulu
+            </div>
+            <h1 className="text-3xl font-semibold">
+              Silakan login dulu. Modul dashboard/produk/pemesanan/pembayaran/laporan/settings hanya
+              muncul setelah login atau admin match email.
+            </h1>
+            <p className="text-sm text-slate-600">
+              Gunakan tombol di bawah untuk masuk sebagai konsumen atau admin. Admin dikenali dengan
+              email yang terdaftar di daftar admin.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/login"
+                className="rounded-full bg-gradient-to-r from-amber-500 to-orange-600 px-5 py-3 text-sm font-semibold text-white shadow-sm"
+              >
+                Login
+              </Link>
+              <Link
+                href="/register"
+                className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-50"
+              >
+                Register Konsumen
+              </Link>
+              <Link
+                href="/forgot"
+                className="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm"
+              >
+                Lupa Password
+              </Link>
+            </div>
+            <p className="text-xs text-slate-500">
+              Setelah login, akses modul admin/ops/finance akan terbuka otomatis sesuai role.
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-white/80 p-5 shadow-sm ring-1 ring-black/5 backdrop-blur">
+            <p className="text-sm font-semibold">Admin yang diizinkan (dummy)</p>
+            <p className="text-xs text-slate-500">
+              Sistem multi-admin: login dengan email berikut untuk akses penuh.
+            </p>
+            <div className="mt-3 space-y-2">
+              {admins.map((admin) => (
+                <div
+                  key={admin.email}
+                  className="flex items-center justify-between rounded-xl bg-amber-50 px-4 py-3 text-amber-900 ring-1 ring-amber-100"
+                >
+                  <div>
+                    <p className="text-sm font-semibold">{admin.name}</p>
+                    <p className="text-xs text-amber-800">{admin.email}</p>
+                  </div>
+                  <Badge tone="neutral">{admin.role}</Badge>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-500">Modul akan terbuka setelah login</p>
+              <p className="text-lg font-semibold">Preview modul (locked state)</p>
+            </div>
+            <Badge tone="warning">Butuh login</Badge>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {modules.map((m) => (
+              <div
+                key={m.title}
+                className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white/70 p-4 text-slate-700 shadow-sm ring-1 ring-black/5 backdrop-blur"
+              >
+                <div className="absolute inset-0 bg-white/60" />
+                <div className="relative space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-base font-semibold text-slate-900">{m.title}</p>
+                    <Badge tone="neutral">Terkunci</Badge>
+                  </div>
+                  <p className="text-sm text-slate-600">{m.desc}</p>
+                  <p className="text-xs font-semibold text-amber-700">Login admin untuk membuka</p>
+                  <p className="text-[11px] text-slate-500">Target URL: {m.href}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </main>
-    </div>
+      </section>
+    </Shell>
   );
 }
