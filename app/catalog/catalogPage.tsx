@@ -8,9 +8,12 @@ import { Shell } from "../components/Shell";
 import { Badge } from "../components/ui";
 import { useCart } from "../components/CartProvider";
 import { db } from "../lib/firebase";
+import { supabase } from "../lib/supabaseClient";
 import type { Product } from "../lib/dummyData";
+type ViewProduct = Product & { rawImages: string[] };
+
 export default function CatalogPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ViewProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("Semua");
@@ -21,11 +24,66 @@ export default function CatalogPage() {
     const unsub = onValue(productsRef, (snap) => {
       const val = snap.val() as Record<string, Product> | null;
       const list = val ? Object.values(val) : [];
-      setProducts(list);
+      const mapped = list
+        .map((p) => {
+          const stock = Number(p.stock) || 0;
+          const status =
+            p.status === "Nonaktif"
+              ? "Nonaktif"
+              : stock <= 5
+                ? "Stok Menipis"
+                : "Aktif";
+          const rawImages = p.images && p.images.length > 0 ? p.images : [];
+          const images =
+            rawImages.length > 0
+              ? rawImages.map((img) =>
+                  img && img.startsWith("http")
+                    ? img
+                    : "https://placehold.co/600x400?text=Loading+Image",
+                )
+              : ["https://placehold.co/600x400?text=No+Image"];
+          return {
+            ...p,
+            price: Number(p.price) || 0,
+            stock,
+            status,
+            rawImages,
+            images,
+          };
+        })
+        .filter((p) => p.status !== "Nonaktif");
+      setProducts(mapped);
       setLoading(false);
     });
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    const resolveImages = async () => {
+      if (products.length === 0) return;
+      const resolved = await Promise.all(
+        products.map(async (p) => {
+          const imgs =
+            p.rawImages.length > 0
+              ? await Promise.all(
+                  p.rawImages.map(async (img) => {
+                    if (!img) return "https://placehold.co/600x400?text=No+Image";
+                    if (img.startsWith("http")) return img;
+                    const cleaned = img.startsWith("/") ? img.slice(1) : img;
+                    const { data } = await supabase.storage
+                      .from("putridev")
+                      .createSignedUrl(cleaned, 60 * 60);
+                    return data?.signedUrl || "https://placehold.co/600x400?text=No+Image";
+                  }),
+                )
+              : ["https://placehold.co/600x400?text=No+Image"];
+          return { ...p, images: imgs };
+        }),
+      );
+      setProducts(resolved);
+    };
+    void resolveImages();
+  }, [products.length]);
   const categories = useMemo(
     () => ["Semua", ...Array.from(new Set(products.map((p) => p.category)))],
     [products],
@@ -142,7 +200,7 @@ export default function CatalogPage() {
                   <div className="flex items-center justify-between text-[11px] text-slate-500">
                     {" "}
                     <span>Stok {p.stock} pcs</span>{" "}
-                    <Badge tone={p.stock <= 5 ? "warning" : "success"}>
+                    <Badge tone={p.status === "Stok Menipis" ? "warning" : "success"}>
                       {p.status}
                     </Badge>{" "}
                   </div>{" "}
@@ -156,24 +214,27 @@ export default function CatalogPage() {
                     {" "}
                     Lihat Detail{" "}
                   </Link>{" "}
-                  <button
-                    onClick={() => {
-                      addItem(p.slug, 1);
-                      setJustAdded(p.slug);
-                    }}
-                    className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-amber-400 via-orange-500 to-orange-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:from-amber-500 hover:to-orange-700"
-                  >
-                    {" "}
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/15">
-                      {" "}
-                      <ShoppingCart className="h-3.5 w-3.5" />{" "}
-                    </span>{" "}
-                    Keranjang{" "}
-                    <span className="rounded-full bg-white/20 px-2 py-[2px] text-[10px] font-bold">
-                      {" "}
-                      {qtyBySlug(p.slug)}{" "}
-                    </span>{" "}
-                  </button>{" "}
+                  {p.stock > 0 ? (
+                    <button
+                      onClick={() => {
+                        addItem(p.slug, 1);
+                        setJustAdded(p.slug);
+                      }}
+                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-amber-400 via-orange-500 to-orange-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:from-amber-500 hover:to-orange-700"
+                    >
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/15">
+                        <ShoppingCart className="h-3.5 w-3.5" />
+                      </span>
+                      Keranjang
+                      <span className="rounded-full bg-white/20 px-2 py-[2px] text-[10px] font-bold">
+                        {qtyBySlug(p.slug)}
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-center text-[11px] font-semibold text-slate-400">
+                      Stok habis
+                    </div>
+                  )}{" "}
                   {justAdded === p.slug && (
                     <span className="absolute right-3 top-3 rounded-full bg-emerald-500 px-3 py-1 text-[10px] font-semibold text-white shadow-sm">
                       {" "}

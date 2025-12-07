@@ -7,7 +7,9 @@ import { Shell } from "../../components/Shell";
 import { Badge } from "../../components/ui";
 import { useCart } from "../../components/CartProvider";
 import { db } from "../../lib/firebase";
+import { supabase } from "../../lib/supabaseClient";
 import type { Product } from "../../lib/dummyData";
+type ViewProduct = Product & { rawImages: string[] };
 export default function CatalogDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -17,7 +19,7 @@ export default function CatalogDetailPage() {
       : Array.isArray(params?.slug)
         ? params.slug[0]
         : "";
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ViewProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const [qty, setQty] = useState(1);
@@ -28,13 +30,68 @@ export default function CatalogDetailPage() {
     const unsub = onValue(productsRef, (snap) => {
       const val = snap.val() as Record<string, Product> | null;
       const list = val ? Object.values(val) : [];
-      setProducts(list);
+      const mapped = list
+        .map((p) => {
+          const stock = Number(p.stock) || 0;
+          const status =
+            p.status === "Nonaktif"
+              ? "Nonaktif"
+              : stock <= 5
+                ? "Stok Menipis"
+                : "Aktif";
+          const rawImages = p.images && p.images.length > 0 ? p.images : [];
+          const images =
+            rawImages.length > 0
+              ? rawImages.map((img) =>
+                  img && img.startsWith("http")
+                    ? img
+                    : "https://placehold.co/800x600?text=Loading+Image",
+                )
+              : ["https://placehold.co/800x600?text=No+Image"];
+          return {
+            ...p,
+            stock,
+            price: Number(p.price) || 0,
+            status,
+            rawImages,
+            images,
+          };
+        })
+        .filter((p) => p.status !== "Nonaktif");
+      setProducts(mapped);
       setLoading(false);
       setActiveIndex(0);
       setQty(1);
     });
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    const resolveImages = async () => {
+      if (products.length === 0) return;
+      const resolved = await Promise.all(
+        products.map(async (p) => {
+          const imgs =
+            p.rawImages.length > 0
+              ? await Promise.all(
+                  p.rawImages.map(async (img) => {
+                    if (!img) return "https://placehold.co/800x600?text=No+Image";
+                    if (img.startsWith("http")) return img;
+                    const cleaned = img.startsWith("/") ? img.slice(1) : img;
+                    const { data } = await supabase.storage
+                      .from("putridev")
+                      .createSignedUrl(cleaned, 60 * 60);
+                    return data?.signedUrl || "https://placehold.co/800x600?text=No+Image";
+                  }),
+                )
+              : ["https://placehold.co/800x600?text=No+Image"];
+          return { ...p, images: imgs };
+        }),
+      );
+      setProducts(resolved);
+    };
+    void resolveImages();
+  }, [products.length]);
   const product = useMemo(
     () => products.find((p) => p.slug === slug) || null,
     [products, slug],
@@ -113,7 +170,7 @@ export default function CatalogDetailPage() {
               {" "}
               {product.images.map((img, idx) => (
                 <button
-                  key={img}
+                  key={`${img}-${idx}`}
                   onClick={() => setActiveIndex(idx)}
                   className={`relative h-16 w-full overflow-hidden rounded-lg border ${activeIndex === idx ? "border-amber-300" : "border-slate-200"}`}
                   type="button"
@@ -155,47 +212,47 @@ export default function CatalogDetailPage() {
             <p className="text-sm leading-relaxed text-slate-700">
               {product.description}
             </p>{" "}
-            <div className="flex items-center gap-3">
-              {" "}
-              <div className="flex items-center rounded-xl border border-slate-200">
-                {" "}
+            {product.stock > 0 ? (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center rounded-xl border border-slate-200">
+                  <button
+                    type="button"
+                    className="px-3 py-2 text-sm font-semibold text-slate-700"
+                    onClick={() => setQty((q) => Math.max(1, q - 1))}
+                  >
+                    -
+                  </button>
+                  <div className="px-4 py-2 text-sm font-semibold text-slate-900">
+                    {qty}
+                  </div>
+                  <button
+                    type="button"
+                    className="px-3 py-2 text-sm font-semibold text-slate-700"
+                    onClick={() => setQty((q) => Math.min(product.stock, q + 1))}
+                  >
+                    +
+                  </button>
+                </div>
                 <button
+                  className="flex-1 rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm"
+                  onClick={() => {
+                    addItem(product.slug, qty);
+                    setAdded(true);
+                    setTimeout(() => setAdded(false), 1200);
+                  }}
                   type="button"
-                  className="px-3 py-2 text-sm font-semibold text-slate-700"
-                  onClick={() => setQty((q) => Math.max(1, q - 1))}
                 >
-                  {" "}
-                  -{" "}
-                </button>{" "}
-                <div className="px-4 py-2 text-sm font-semibold text-slate-900">
-                  {qty}
-                </div>{" "}
-                <button
-                  type="button"
-                  className="px-3 py-2 text-sm font-semibold text-slate-700"
-                  onClick={() => setQty((q) => Math.min(product.stock, q + 1))}
-                >
-                  {" "}
-                  +{" "}
-                </button>{" "}
-              </div>{" "}
-              <button
-                className="flex-1 rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm"
-                onClick={() => {
-                  addItem(product.slug, qty);
-                  setAdded(true);
-                  setTimeout(() => setAdded(false), 1200);
-                }}
-                type="button"
-              >
-                {" "}
-                Tambah ke Keranjang{" "}
-              </button>{" "}
-              <span className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
-                {" "}
-                Dalam keranjang: {qtyBySlug(product.slug)}{" "}
-              </span>{" "}
-            </div>{" "}
+                  Tambah ke Keranjang
+                </button>
+                <span className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+                  Dalam keranjang: {qtyBySlug(product.slug)}
+                </span>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500">
+                Stok habis. Keranjang dinonaktifkan.
+              </div>
+            )}{" "}
             {added && (
               <div className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
                 {" "}

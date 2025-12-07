@@ -128,10 +128,6 @@ export default function LoginPage() {
               </div>{" "}
               <div className="flex items-center justify-between text-xs text-slate-600">
                 {" "}
-                <label className="inline-flex items-center gap-2">
-                  {" "}
-                  <input type="checkbox" /> Remember me{" "}
-                </label>{" "}
                 <Link
                   href="/forgot"
                   className="font-semibold text-amber-700 hover:underline"

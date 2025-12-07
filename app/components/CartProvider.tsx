@@ -3,6 +3,8 @@
 import { onValue, ref } from "firebase/database";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { db } from "../lib/firebase";
+import { supabase } from "../lib/supabaseClient";
+import { useAuth } from "./AuthProvider";
 import type { Product } from "../lib/dummyData";
 
 export type CartItem = {
@@ -30,7 +32,17 @@ type CartContextValue = {
 };
 
 const CartContext = createContext<CartContextValue | undefined>(undefined);
-const STORAGE_KEY = "sparx-cart";
+const STORAGE_PREFIX = "sparx-cart";
+
+const normalizeImage = (src?: string) => {
+  if (!src) return "https://placehold.co/300x300/png?text=No+Image";
+  if (src.startsWith("http")) return src;
+  const cleaned = src.startsWith("/") ? src.slice(1) : src;
+  return `https://mouisdjwiiirvxnyhora.supabase.co/storage/v1/object/public/putridev/${cleaned}`;
+};
+
+const normalizeCartList = (list: CartItem[]): CartItem[] =>
+  list.map((i) => ({ ...i, image: normalizeImage(i.image) }));
 
 function withStock(list: CartItem[], productMap: Record<string, Product>): CartItem[] {
   return list.map((i) => {
@@ -38,32 +50,41 @@ function withStock(list: CartItem[], productMap: Record<string, Product>): CartI
     const stock = product?.stock ?? i.stock ?? 0;
     const price = product?.price ?? i.price;
     const name = product?.name ?? i.name;
-    const image = product?.images?.[0] ?? i.image;
+    const image = normalizeImage(product?.images?.[0] ?? i.image);
     return { ...i, stock, price, name, image };
   });
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
   const [productMap, setProductMap] = useState<Record<string, Product>>({});
+  const storageKey = user?.uid ? `${STORAGE_PREFIX}-${user.uid}` : `${STORAGE_PREFIX}-guest`;
+  const [storageReady, setStorageReady] = useState(false);
+  const resolvedCache = useMemo<Record<string, string>>(() => ({}), []);
 
   useEffect(() => {
-    const raw = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+    if (typeof window === "undefined") return;
+    setStorageReady(false);
+    const raw = localStorage.getItem(storageKey);
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as CartItem[];
-        setItems(parsed);
+        setItems(normalizeCartList(parsed));
       } catch {
-        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(storageKey);
+        setItems([]);
       }
+    } else {
+      setItems([]);
     }
-  }, []);
+    setStorageReady(true);
+  }, [storageKey]);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    }
-  }, [items]);
+    if (typeof window === "undefined" || !storageReady) return;
+    localStorage.setItem(storageKey, JSON.stringify(items));
+  }, [items, storageKey, storageReady]);
 
   useEffect(() => {
     const productsRef = ref(db, "products");
@@ -89,7 +110,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                 stock: product.stock,
                 price: product.price,
                 name: product.name,
-                image: product.images?.[0] ?? i.image,
+                image: normalizeImage(product.images?.[0] ?? i.image),
                 qty: Math.min(product.stock, i.qty + qty),
                 selected: true,
               }
@@ -103,7 +124,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           name: product.name,
           price: product.price,
           qty: Math.min(product.stock, qty),
-          image: product.images?.[0] ?? "",
+          image: normalizeImage(product.images?.[0]),
           selected: true,
           stock: product.stock,
         },
@@ -124,7 +145,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           stock: maxStock,
           price: product?.price ?? i.price,
           name: product?.name ?? i.name,
-          image: product?.images?.[0] ?? i.image,
+          image: normalizeImage(product?.images?.[0] ?? i.image),
         };
       }),
     );
@@ -155,6 +176,45 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     () => selectedItems.reduce((sum, i) => sum + i.qty * i.price, 0),
     [selectedItems],
   );
+
+  useEffect(() => {
+    const resolveImages = async () => {
+      const needResolve = items.filter((i) => !i.image || !i.image.startsWith("http") || !i.image.includes("token="));
+      if (needResolve.length === 0) return;
+      let changed = false;
+      const updated = await Promise.all(
+        items.map(async (item) => {
+          const src = item.image;
+          if (src && src.startsWith("http") && src.includes("token=")) return item;
+          let path: string | null = null;
+          if (src?.startsWith("http")) {
+            const match = src.match(/object\/public\/putridev\/([^?]+)/);
+            path = match ? match[1] : null;
+          } else if (src) {
+            const cleaned = src.startsWith("/") ? src.slice(1) : src;
+            path = cleaned.replace(/^putridev\//, "");
+          }
+          if (path) {
+            if (resolvedCache[path]) {
+              changed = true;
+              return { ...item, image: resolvedCache[path] };
+            }
+            const { data } = await supabase.storage.from("putridev").createSignedUrl(path, 60 * 60);
+            if (data?.signedUrl) {
+              resolvedCache[path] = data.signedUrl;
+              changed = true;
+              return { ...item, image: data.signedUrl };
+            }
+          }
+          const fallback = normalizeImage(src);
+          if (fallback !== src) changed = true;
+          return { ...item, image: fallback };
+        }),
+      );
+      if (changed) setItems(updated);
+    };
+    void resolveImages();
+  }, [items]);
 
   const value: CartContextValue = {
     items,

@@ -115,7 +115,7 @@ export function Shell({
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-slate-200 text-slate-900">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-screen-xl flex-col gap-4 px-6 py-4">
+        <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-4 px-4 py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="relative h-12 w-12 overflow-hidden rounded-2xl bg-white shadow-lg ring-2 ring-amber-200">
@@ -194,7 +194,7 @@ export function Shell({
         </div>
       </header>
 
-      <main className="mx-auto w-full px-6 py-8">
+      <main className="mx-auto w-full max-w-screen-2xl px-4 py-8">
         {showQuickInfo && (
           <div className="mb-6 rounded-2xl bg-slate-900 p-4 text-white shadow-sm">
             <p className="text-sm font-semibold">Quick Info</p>

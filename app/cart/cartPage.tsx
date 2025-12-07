@@ -17,6 +17,7 @@ export default function CartPage() {
     totalPrice,
   } = useCart();
   const allSelected = items.length > 0 && items.every((i) => i.selected);
+  const hasOutOfStock = selectedItems.some((i) => (i.stock ?? 0) <= 0);
   return (
     <Shell active="cart" requiresAuth>
       {" "}
@@ -83,7 +84,6 @@ export default function CartPage() {
                     {" "}
                     Rp {item.price.toLocaleString("id-ID")} / item{" "}
                   </p>{" "}
-                  <Badge tone="neutral">Slug: {item.slug}</Badge>{" "}
                 </div>{" "}
                 <div className="flex items-center gap-3 sm:flex-col sm:items-end">
                   {" "}
@@ -149,9 +149,9 @@ export default function CartPage() {
               Lanjut belanja{" "}
             </Link>{" "}
             <button
-              disabled={selectedItems.length === 0}
+              disabled={selectedItems.length === 0 || hasOutOfStock}
               onClick={() => router.push("/checkout")}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm ${selectedItems.length === 0 ? "bg-slate-300" : "bg-gradient-to-r from-amber-500 to-orange-600"}`}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm ${selectedItems.length === 0 || hasOutOfStock ? "bg-slate-300 cursor-not-allowed" : "bg-gradient-to-r from-amber-500 to-orange-600"}`}
             >
               {" "}
               Checkout{" "}

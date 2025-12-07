@@ -1,14 +1,15 @@
 "use client";
-import { onValue, ref } from "firebase/database";
+import { onValue, ref, set, update } from "firebase/database";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { Shell } from "../components/Shell";
 import { Badge } from "../components/ui";
 import { useCart } from "../components/CartProvider";
 import { useAuth } from "../components/AuthProvider";
 import { db } from "../lib/firebase";
+import { supabase } from "../lib/supabaseClient";
 export default function CheckoutPage() {
   const router = useRouter();
   const { selectedItems, totalPrice, clear } = useCart();
@@ -18,6 +19,35 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState("");
   const [note, setNote] = useState("");
   const [paid, setPaid] = useState(false);
+  const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const [proofName, setProofName] = useState("");
+  const [showProofModal, setShowProofModal] = useState(false);
+  const [proofPath, setProofPath] = useState("");
+  const [proofUploading, setProofUploading] = useState(false);
+  const [proofError, setProofError] = useState<string | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const removeProofFromStorage = async (path: string) => {
+    try {
+      await supabase.storage.from("putridev").remove([path]);
+    } catch {
+      // swallow errors for cleanup
+    }
+  };
+  const clearProof = () => {
+    if (proofPath) {
+      void removeProofFromStorage(proofPath);
+    }
+    setProofName("");
+    setProofPath("");
+    setProofError(null);
+    setProofUploading(false);
+    setProofPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setShowProofModal(false);
+  };
   useEffect(() => {
     if (!user?.uid) return;
     const userRef = ref(db, `users/${user.uid}`);
@@ -34,6 +64,57 @@ export default function CheckoutPage() {
     });
     return () => unsub();
   }, [user]);
+  useEffect(
+    () => () => {
+      if (proofPreview) URL.revokeObjectURL(proofPreview);
+    },
+    [proofPreview],
+  );
+  const handleProofChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const maxSize = 2 * 1024 * 1024; // 2MB
+    if (file.size > maxSize) {
+      setProofError("Ukuran file lebih dari 2MB.");
+      return;
+    }
+    if (
+      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    ) {
+      setProofError("Supabase belum dikonfigurasi (URL/Anon key kosong).");
+      return;
+    }
+    setProofError(null);
+    setProofName(file.name);
+    setProofUploading(true);
+    if (proofPath) {
+      // Upsert manual: hapus file lama supaya tidak menumpuk.
+      await removeProofFromStorage(proofPath);
+    }
+    const safeName = file.name.replace(/\s+/g, "-");
+    const path = `proofs/${user?.uid || "guest"}/${Date.now()}-${safeName}`;
+    const { error } = await supabase.storage
+      .from("putridev")
+      .upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type || "application/octet-stream",
+      });
+    if (error) {
+      setProofError("Gagal mengunggah bukti, coba lagi.");
+      setProofUploading(false);
+      return;
+    }
+    setProofPath(path);
+    const nextUrl = URL.createObjectURL(file);
+    setProofPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return nextUrl;
+    });
+    setShowProofModal(false);
+    setProofUploading(false);
+  };
   if (selectedItems.length === 0) {
     return (
       <Shell active="cart" requiresAuth>
@@ -55,10 +136,68 @@ export default function CheckoutPage() {
       </Shell>
     );
   }
-  const handleConfirm = () => {
-    setPaid(true);
-    clear();
-    setTimeout(() => router.push("/history"), 800);
+  const handleConfirm = async () => {
+    if (!user?.uid) {
+      setSaveError("Silakan login sebelum konfirmasi.");
+      return;
+    }
+    const insufficient = selectedItems.filter((i) => i.qty > (i.stock ?? 0));
+    if (insufficient.length > 0) {
+      setSaveError(
+        `Stok tidak cukup untuk: ${insufficient
+          .map((i) => `${i.name} (tersisa ${i.stock})`)
+          .join(", ")}.`,
+      );
+      return;
+    }
+    setSaveError(null);
+    setSavingOrder(true);
+    const orderId = `ORD-${Date.now()}`;
+    const shippingFee = 15000;
+    const payload = {
+      id: orderId,
+      userId: user.uid,
+      customer: {
+        name: recipient || user.name,
+        email: user.email,
+        phone,
+        address,
+      },
+      note,
+      status: proofPath ? "Menunggu Verifikasi" : "Menunggu Upload",
+      paymentProofPath: proofPath || null,
+      paymentProofName: proofName || null,
+      subtotal: totalPrice,
+      shipping: shippingFee,
+      total: totalPrice + shippingFee,
+      items: selectedItems.map((i) => ({
+        slug: i.slug,
+        name: i.name,
+        qty: i.qty,
+        price: i.price,
+        image: i.image,
+      })),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    try {
+      await set(ref(db, `orders/${orderId}`), payload);
+      await set(ref(db, `userOrders/${user.uid}/${orderId}`), true);
+      await Promise.all(
+        selectedItems.map((i) =>
+          update(ref(db, `products/${i.slug}`), {
+            stock: Math.max(0, (i.stock ?? 0) - i.qty),
+          }),
+        ),
+      );
+      setPaid(true);
+      clear();
+      setTimeout(() => router.push("/history"), 800);
+    } catch (err) {
+      setSaveError("Gagal menyimpan transaksi, coba lagi.");
+    } finally {
+      setSavingOrder(false);
+    }
   };
   return (
     <Shell active="cart" requiresAuth>
@@ -149,18 +288,84 @@ export default function CheckoutPage() {
             </div>{" "}
           </div>{" "}
           <div className="space-y-3 rounded-2xl bg-white/80 p-4 shadow-sm ring-1 ring-black/5">
-            {" "}
             <p className="text-sm font-semibold text-slate-900">
               Upload Bukti Pembayaran
-            </p>{" "}
+            </p>
             <p className="text-xs text-slate-500">
               Transfer ke BCA 1234567890 a.n Ponti Pratama
-            </p>{" "}
-            <input type="file" className="w-full text-sm" accept="image/*" />{" "}
-            <p className="text-xs text-slate-500">
-              Format: JPG/PNG, max 2MB (dummy)
-            </p>{" "}
-          </div>{" "}
+            </p>
+            <div className="space-y-3 rounded-xl border border-dashed border-slate-200 bg-white/70 p-4">
+              {!proofPreview && (
+                <label
+                  htmlFor="payment-proof"
+                  className={`flex items-center gap-3 rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 shadow-sm transition hover:-translate-y-0.5 hover:border-amber-200 hover:bg-amber-100 ${proofUploading ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-lg text-amber-700 shadow">
+                    +
+                  </span>
+                  <div className="leading-tight">
+                    <span>{proofUploading ? "Mengunggah..." : "Pilih file bukti"}</span>
+                    <p className="text-[11px] font-normal text-amber-700">
+                      JPG/PNG, max 2MB
+                    </p>
+                  </div>
+                </label>
+              )}
+              <input
+                id="payment-proof"
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                disabled={proofUploading}
+                onChange={handleProofChange}
+              />
+              <div className="space-y-1 text-xs text-slate-500">
+                <p>
+                  {proofUploading
+                    ? "Mengunggah ke Supabase..."
+                    : proofName
+                      ? `File terpilih: ${proofName}`
+                      : "Belum ada file terpilih"}
+                </p>
+                {proofPath && (
+                  <p className="break-all text-[11px] text-slate-500">
+                    Path tersimpan: {proofPath}
+                  </p>
+                )}
+                {proofError && (
+                  <p className="text-[11px] font-semibold text-rose-600">{proofError}</p>
+                )}
+              </div>
+              {proofPreview && (
+                <div className="pt-1">
+                  <p className="text-xs font-semibold text-slate-700">Pratinjau</p>
+                  <div className="mt-2 flex items-start gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowProofModal(true)}
+                      className="group relative h-28 w-28 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5"
+                    >
+                      <img
+                        src={proofPreview}
+                        alt="Pratinjau bukti pembayaran"
+                        className="h-full w-full object-cover transition group-hover:scale-105"
+                      />
+                    </button>
+                    <div className="space-y-2 text-[11px] text-slate-500">
+                      <p>Klik gambar untuk memperbesar di modal.</p>
+                      <button
+                        type="button"
+                        onClick={clearProof}
+                        className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+                      >
+                        Hapus bukti
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>{" "}
         <div className="space-y-3 rounded-2xl bg-white/80 p-4 shadow-sm ring-1 ring-black/5">
           {" "}
@@ -189,15 +394,24 @@ export default function CheckoutPage() {
           </div>{" "}
           <button
             onClick={handleConfirm}
-            className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm"
+            disabled={
+              savingOrder ||
+              proofUploading ||
+              selectedItems.length === 0 ||
+              selectedItems.some((i) => (i.stock ?? 0) <= 0)
+            }
+            className={`w-full rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm ${savingOrder || proofUploading || selectedItems.some((i) => (i.stock ?? 0) <= 0) ? "bg-slate-300 cursor-not-allowed" : "bg-gradient-to-r from-emerald-500 to-teal-600"}`}
           >
-            {" "}
-            Konfirmasi & Kirim{" "}
+            {savingOrder ? "Menyimpan..." : "Konfirmasi & Kirim"}
           </button>{" "}
+          {saveError && (
+            <div className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 ring-1 ring-rose-200">
+              {saveError}
+            </div>
+          )}
           {paid && (
             <div className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
-              {" "}
-              Pembayaran dikirim (dummy). Mengalihkan ke riwayat...{" "}
+              Berhasil membuat transaksi. Mengalihkan ke riwayat...
             </div>
           )}{" "}
           <Link
@@ -209,6 +423,30 @@ export default function CheckoutPage() {
           </Link>{" "}
         </div>{" "}
       </div>{" "}
+      {showProofModal && proofPreview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setShowProofModal(false)}
+        >
+          <div
+            className="relative max-h-[80vh] max-w-3xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={proofPreview}
+              alt="Bukti pembayaran"
+              className="max-h-[80vh] rounded-2xl shadow-2xl"
+            />
+            <button
+              type="button"
+              onClick={() => setShowProofModal(false)}
+              className="absolute -right-3 -top-3 rounded-full bg-white/90 px-2 py-1 text-xs font-semibold text-slate-700 shadow"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      )}
     </Shell>
   );
 }
