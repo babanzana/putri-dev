@@ -58,8 +58,8 @@ export const consumers: Consumer[] = [
 
 export const admins: Admin[] = [
   {
-    name: "Rangga Santoso",
-    email: "admin@sparx.id",
+    name: "Putri",
+    email: "aaaputrides2025@gmail.com",
     role: "Super Admin",
     password: "admin123",
   },

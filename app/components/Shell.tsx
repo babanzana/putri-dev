@@ -8,7 +8,6 @@ import {
   Box,
   ClipboardList,
   Clock3,
-  CreditCard,
   FilePieChart,
   LayoutDashboard,
   LogIn,
@@ -34,7 +33,8 @@ type NavKey =
   | "dashboard"
   | "products"
   | "orders"
-  | "reports"
+  | "reportStock"
+  | "reportSales"
   | "settings";
 
 type NavItem = { key: NavKey; label: string; href: string; requiresAuth?: boolean };
@@ -49,11 +49,11 @@ const primaryNav: NavItem[] = [
 ];
 
 const adminNav: NavItem[] = [
-  ...primaryNav,
   { key: "dashboard", label: "Dashboard", href: "/dashboard", requiresAuth: true },
   { key: "products", label: "Produk & Stok", href: "/products", requiresAuth: true },
   { key: "orders", label: "Pemesanan", href: "/orders", requiresAuth: true },
-  { key: "reports", label: "Laporan", href: "/reports", requiresAuth: true },
+  { key: "reportStock", label: "Laporan Stok", href: "/reports#stok", requiresAuth: true },
+  { key: "reportSales", label: "Laporan Penjualan", href: "/reports#penjualan", requiresAuth: true },
 ];
 
 const consumerNav: NavItem[] = [...primaryNav];
@@ -69,8 +69,8 @@ const navIcon: Record<NavKey, JSX.Element> = {
   dashboard: <LayoutDashboard className="h-4 w-4" />,
   products: <Box className="h-4 w-4" />,
   orders: <ClipboardList className="h-4 w-4" />,
-  payments: <CreditCard className="h-4 w-4" />,
-  reports: <FilePieChart className="h-4 w-4" />,
+  reportStock: <FilePieChart className="h-4 w-4" />,
+  reportSales: <FilePieChart className="h-4 w-4" />,
   settings: <Settings className="h-4 w-4" />,
 };
 

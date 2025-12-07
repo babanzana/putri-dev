@@ -1,7 +1,9 @@
 "use client";
 
+import { onValue, ref } from "firebase/database";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { products } from "../lib/dummyData";
+import { db } from "../lib/firebase";
+import type { Product } from "../lib/dummyData";
 
 export type CartItem = {
   slug: string;
@@ -30,23 +32,27 @@ type CartContextValue = {
 const CartContext = createContext<CartContextValue | undefined>(undefined);
 const STORAGE_KEY = "sparx-cart";
 
-function withStock(list: CartItem[]): CartItem[] {
+function withStock(list: CartItem[], productMap: Record<string, Product>): CartItem[] {
   return list.map((i) => {
-    const product = products.find((p) => p.slug === i.slug);
+    const product = productMap[i.slug];
     const stock = product?.stock ?? i.stock ?? 0;
-    return { ...i, stock };
+    const price = product?.price ?? i.price;
+    const name = product?.name ?? i.name;
+    const image = product?.images?.[0] ?? i.image;
+    return { ...i, stock, price, name, image };
   });
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [productMap, setProductMap] = useState<Record<string, Product>>({});
 
   useEffect(() => {
     const raw = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as CartItem[];
-        setItems(withStock(parsed));
+        setItems(parsed);
       } catch {
         localStorage.removeItem(STORAGE_KEY);
       }
@@ -59,8 +65,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [items]);
 
+  useEffect(() => {
+    const productsRef = ref(db, "products");
+    const unsub = onValue(productsRef, (snap) => {
+      const val = snap.val() as Record<string, Product> | null;
+      const map = val ?? {};
+      setProductMap(map);
+      setItems((prev) => withStock(prev, map));
+    });
+    return () => unsub();
+  }, []);
+
   const addItem = (slug: string, qty: number = 1) => {
-    const product = products.find((p) => p.slug === slug);
+    const product = productMap[slug];
     if (!product) return;
     setItems((prev) => {
       const found = prev.find((i) => i.slug === slug);
@@ -70,6 +87,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             ? {
                 ...i,
                 stock: product.stock,
+                price: product.price,
+                name: product.name,
+                image: product.images?.[0] ?? i.image,
                 qty: Math.min(product.stock, i.qty + qty),
                 selected: true,
               }
@@ -83,7 +103,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           name: product.name,
           price: product.price,
           qty: Math.min(product.stock, qty),
-          image: product.images[0],
+          image: product.images?.[0] ?? "",
           selected: true,
           stock: product.stock,
         },
@@ -92,13 +112,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateQty = (slug: string, qty: number) => {
-    const product = products.find((p) => p.slug === slug);
+    const product = productMap[slug];
     setItems((prev) =>
       prev.map((i) => {
         if (i.slug !== slug) return i;
         const maxStock = product?.stock ?? i.stock ?? 1;
         const nextQty = Math.min(Math.max(1, qty), maxStock);
-        return { ...i, qty: nextQty, stock: maxStock };
+        return {
+          ...i,
+          qty: nextQty,
+          stock: maxStock,
+          price: product?.price ?? i.price,
+          name: product?.name ?? i.name,
+          image: product?.images?.[0] ?? i.image,
+        };
       }),
     );
   };
