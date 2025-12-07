@@ -3,7 +3,7 @@ import { Badge } from "../components/ui";
 
 export default function PaymentsPage() {
   return (
-    <Shell active="payments">
+    <Shell active="payments" requiresAuth>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -19,7 +19,7 @@ export default function PaymentsPage() {
           <div className="rounded-2xl bg-white/80 p-4 shadow-sm ring-1 ring-black/5 backdrop-blur">
             <p className="text-sm font-semibold">Payment Instruction</p>
             <p className="text-xs text-slate-500">
-              Nomor rekening, total tagihan, batas waktu
+              Media transfer hanya melalui BCA (transfer bank)
             </p>
             <div className="mt-3 space-y-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <div className="flex items-center justify-between">
@@ -27,7 +27,7 @@ export default function PaymentsPage() {
                   <p className="text-xs text-slate-500">Bank</p>
                   <p className="text-lg font-semibold">BCA - 1234567890</p>
                   <p className="text-xs text-slate-500">
-                    a.n. PT SparX Parts Indonesia
+                    a.n. PT Ponti Pratama Indonesia
                   </p>
                 </div>
                 <Badge tone="neutral">VA/Transfer</Badge>

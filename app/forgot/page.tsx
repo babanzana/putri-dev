@@ -5,7 +5,7 @@ import { Shell } from "../components/Shell";
 
 export default function ForgotPage() {
   return (
-    <Shell active="auth">
+    <Shell active="login" showQuickInfo={false}>
       <div className="mx-auto max-w-xl rounded-2xl bg-white/80 p-6 shadow-sm ring-1 ring-black/5 backdrop-blur">
         <p className="text-sm font-semibold">Lupa Password</p>
         <p className="text-xs text-slate-500">Kirim link reset ke email</p>

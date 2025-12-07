@@ -4,14 +4,12 @@ import { products } from "../lib/dummyData";
 
 export default function ProductsPage() {
   return (
-    <Shell active="products">
+    <Shell active="products" requiresAuth>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm text-slate-500">Modul Pengelolaan Produk</p>
-            <h2 className="text-2xl font-semibold">
-              List, Tambah/Edit, Detail
-            </h2>
+            <h2 className="text-2xl font-semibold">List, Tambah/Edit, Detail</h2>
           </div>
           <div className="flex gap-2">
             <button className="rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 px-3 py-2 text-xs font-semibold text-white shadow-sm">
@@ -76,9 +74,7 @@ export default function ProductsPage() {
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-2xl bg-white/80 p-4 shadow-sm ring-1 ring-black/5 backdrop-blur">
             <p className="text-sm font-semibold">Add / Edit Product</p>
-            <p className="text-xs text-slate-500">
-              Upload gambar, harga & stok
-            </p>
+            <p className="text-xs text-slate-500">Upload gambar, harga & stok</p>
             <form className="mt-3 grid gap-3 sm:grid-cols-2">
               <input
                 className="rounded-xl border border-slate-200 px-3 py-2 text-sm sm:col-span-2"
@@ -115,18 +111,13 @@ export default function ProductsPage() {
             <p className="text-xs text-slate-500">Rincian lengkap produk</p>
             <div className="mt-3 space-y-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <div className="flex items-center justify-between">
-                <p className="text-lg font-semibold">
-                  Kampas Rem Depan NMax
-                </p>
+                <p className="text-lg font-semibold">Kampas Rem Depan NMax</p>
                 <Badge tone="success">Aktif</Badge>
               </div>
               <p className="text-sm text-slate-600">Kategori: Brake System</p>
-              <p className="text-sm text-slate-600">
-                Harga: Rp 185.000 • Stok: 12
-              </p>
+              <p className="text-sm text-slate-600">Harga: Rp 185.000 | Stok: 12</p>
               <p className="text-xs text-slate-500">
-                Deskripsi singkat: kampas rem OEM untuk NMax, material ceramic,
-                cocok untuk harian.
+                Deskripsi singkat: kampas rem OEM untuk NMax, material ceramic, cocok untuk harian.
               </p>
               <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-500">
                 Riwayat update stok & harga (dummy)

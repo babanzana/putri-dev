@@ -4,7 +4,7 @@ import { products } from "../lib/dummyData";
 
 export default function ReportsPage() {
   return (
-    <Shell active="reports">
+    <Shell active="reports" requiresAuth>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>

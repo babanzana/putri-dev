@@ -5,12 +5,7 @@ import { Shell } from "../components/Shell";
 import { Badge } from "../components/ui";
 import { orders } from "../lib/dummyData";
 
-const filters = [
-  "Semua",
-  "Menunggu Pembayaran",
-  "Menunggu Verifikasi",
-  "Selesai",
-];
+const filters = ["Semua", "Menunggu Pembayaran", "Menunggu Verifikasi", "Selesai"];
 
 export default function OrdersPage() {
   const [orderFilter, setOrderFilter] = useState<string>("Semua");
@@ -20,7 +15,7 @@ export default function OrdersPage() {
   }, [orderFilter]);
 
   return (
-    <Shell active="orders">
+    <Shell active="orders" requiresAuth>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -63,9 +58,7 @@ export default function OrdersPage() {
               {filteredOrders.map((o) => (
                 <tr key={o.id}>
                   <td className="px-4 py-3 font-semibold">{o.id}</td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {o.customer.name}
-                  </td>
+                  <td className="px-4 py-3 text-slate-600">{o.customer.name}</td>
                   <td className="px-4 py-3 text-slate-600">
                     Rp {o.total.toLocaleString("id-ID")}
                   </td>
@@ -110,7 +103,7 @@ export default function OrdersPage() {
                 <div>
                   <p className="text-lg font-semibold">INV-10294</p>
                   <p className="text-xs text-slate-500">
-                    Pelanggan: Sinta Lestari • Email: sinta.les@mail.com
+                    Pelanggan: Sinta Lestari | Email: sinta.les@mail.com
                   </p>
                 </div>
                 <Badge tone="neutral">Menunggu Verifikasi</Badge>

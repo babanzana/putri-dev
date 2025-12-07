@@ -4,7 +4,7 @@ import { products, salesSeries } from "../lib/dummyData";
 
 export default function DashboardPage() {
   return (
-    <Shell active="dashboard">
+    <Shell active="dashboard" requiresAuth>
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -52,9 +52,7 @@ export default function DashboardPage() {
                     className="w-full rounded-t-lg bg-gradient-to-b from-amber-500 to-orange-600 shadow-sm"
                     style={{ height: `${v * 4}px` }}
                   />
-                  <p className="mt-2 text-center text-xs text-slate-500">
-                    D{i + 1}
-                  </p>
+                  <p className="mt-2 text-center text-xs text-slate-500">D{i + 1}</p>
                 </div>
               ))}
             </div>
@@ -76,11 +74,9 @@ export default function DashboardPage() {
                     className="flex items-center justify-between rounded-xl border border-amber-100 bg-amber-50 px-3 py-2"
                   >
                     <div>
-                      <p className="text-sm font-semibold text-amber-900">
-                        {p.name}
-                      </p>
+                      <p className="text-sm font-semibold text-amber-900">{p.name}</p>
                       <p className="text-xs text-amber-800">
-                        Stok: {p.stock} • {p.category}
+                        Stok: {p.stock} | {p.category}
                       </p>
                     </div>
                     <Badge tone="warning">Restock</Badge>
