@@ -59,7 +59,7 @@ export const consumers: Consumer[] = [
 export const admins: Admin[] = [
   {
     name: "Putri",
-    email: "aaaputrides2025@gmail.com",
+    email: "putrides2025@gmail.com",
     role: "Super Admin",
     password: "admin123",
   },
@@ -294,7 +294,7 @@ export const orders: Order[] = [
   {
     id: "INV-10293",
     customer: consumers[0],
-    status: "Menunggu Pembayaran",
+    status: "Menunggu Upload",
     total: 425000,
     paymentProof: null,
   },

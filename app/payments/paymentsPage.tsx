@@ -89,7 +89,7 @@ export default function PaymentsPage() {
               <select className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                 {" "}
                 <option>Menunggu Verifikasi</option>{" "}
-                <option>Menunggu Pembayaran</option>{" "}
+                <option>Menunggu Upload</option>{" "}
                 <option>Selesai</option>{" "}
               </select>{" "}
               <button className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm">

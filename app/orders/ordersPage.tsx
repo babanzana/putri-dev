@@ -1,221 +1,211 @@
 "use client";
-import { useMemo, useState } from "react";
+import { onValue, ref } from "firebase/database";
+import { ChevronDown } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { Shell } from "../components/Shell";
 import { Badge } from "../components/ui";
-import { orders } from "../lib/dummyData";
-const filters = [
+import { db } from "../lib/firebase";
+
+type OrderItem = { slug: string; name: string; qty: number; price: number; image?: string };
+type OrderRecord = {
+  id: string;
+  customer?: { name?: string; email?: string; phone?: string; address?: string };
+  status: string;
+  total?: number;
+  subtotal?: number;
+  shipping?: number;
+  items?: OrderItem[];
+  paymentProofName?: string | null;
+  paymentProofPath?: string | null;
+  createdAt?: number;
+  note?: string;
+};
+
+const statusOptions = [
   "Semua",
-  "Menunggu Pembayaran",
+  "Menunggu Upload",
   "Menunggu Verifikasi",
   "Selesai",
+  "Batal",
 ];
+
 export default function OrdersPage() {
-  const [orderFilter, setOrderFilter] = useState<string>("Semua");
-  const filteredOrders = useMemo(() => {
-    if (orderFilter === "Semua") return orders;
-    return orders.filter((o) => o.status === orderFilter);
-  }, [orderFilter]);
+  const today = new Date().toISOString().slice(0, 10);
+  const [orders, setOrders] = useState<OrderRecord[]>([]);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("Semua");
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(today);
+
+  useEffect(() => {
+    const ordersRef = ref(db, "orders");
+    const unsub = onValue(ordersRef, (snap) => {
+      const val = snap.val() as Record<string, OrderRecord> | null;
+      const list = val ? Object.values(val) : [];
+      setOrders(
+        list.map((o) => ({
+          ...o,
+          total: Number(o.total) || 0,
+        })),
+      );
+    });
+    return () => unsub();
+  }, []);
+
+  const filtered = useMemo(() => {
+    const term = search.toLowerCase();
+    const startTs = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : null;
+    const endTs = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : null;
+    return orders
+      .filter((o) => {
+        const matchStatus = status === "Semua" || o.status === status;
+        const matchSearch =
+          o.id?.toLowerCase().includes(term) ||
+          (o.customer?.name || "").toLowerCase().includes(term) ||
+          (o.customer?.email || "").toLowerCase().includes(term);
+        const created = o.createdAt || 0;
+        const matchStart = startTs ? created >= startTs : true;
+        const matchEnd = endTs ? created <= endTs : true;
+        return matchStatus && matchSearch && matchStart && matchEnd;
+      })
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  }, [orders, search, status, startDate, endDate]);
+
+  const formatDate = (ts?: number) =>
+    ts ? new Date(ts).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }) : "-";
+
   return (
     <Shell active="orders" requiresAuth>
-      {" "}
       <div className="space-y-4">
-        {" "}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          {" "}
           <div>
-            {" "}
-            <p className="text-sm text-slate-500">
-              Modul Transaksi Pemesanan
-            </p>{" "}
-            <h2 className="text-2xl font-semibold">Order List & Detail</h2>{" "}
-          </div>{" "}
-          <div className="flex gap-2">
-            {" "}
-            {filters.map((f) => (
-              <button
-                key={f}
-                onClick={() => setOrderFilter(f)}
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${orderFilter === f ? "bg-amber-100 text-amber-800 ring-1 ring-amber-200" : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-amber-50"}`}
+            <p className="text-sm text-slate-500">Modul Transaksi Pemesanan</p>
+            <h2 className="text-2xl font-semibold">Order List & Detail</h2>
+          </div>
+          <div className="flex flex-wrap items-end gap-3 text-xs text-slate-500">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="order-search">Pencarian</label>
+              <input
+                id="order-search"
+                className="rounded-full border border-slate-200 px-3 py-2 text-sm"
+                placeholder="Cari ID / nama / email"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="order-status">Filter Status</label>
+              <div className="relative">
+                <select
+                  id="order-status"
+                  className="appearance-none rounded-full border border-slate-200 px-3 py-2 pr-9 text-sm"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                >
+                  {statusOptions.map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="order-date-from">Dari</label>
+              <input
+                id="order-date-from"
+                type="date"
+                className="rounded-full border border-slate-200 px-3 py-2 text-sm"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="order-date-to">Sampai</label>
+              <input
+                id="order-date-to"
+                type="date"
+                className="rounded-full border border-slate-200 px-3 py-2 text-sm"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-2 self-end">
+              <Link
+                href="/orders/new"
+                className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-sm"
               >
-                {" "}
-                {f}{" "}
-              </button>
-            ))}{" "}
-            <button className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-sm">
-              {" "}
-              + Manual Add Order{" "}
-            </button>{" "}
-          </div>{" "}
-        </div>{" "}
+                + Manual Add Order
+              </Link>
+            </div>
+          </div>
+        </div>
+
         <div className="overflow-auto rounded-2xl border border-slate-100 bg-white/80 shadow-sm ring-1 ring-black/5 backdrop-blur">
-          {" "}
           <table className="min-w-full divide-y divide-slate-100 text-sm">
-            {" "}
             <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-              {" "}
               <tr>
-                {" "}
-                <th className="px-4 py-3">No. Transaksi</th>{" "}
-                <th className="px-4 py-3">Pelanggan</th>{" "}
-                <th className="px-4 py-3">Total</th>{" "}
-                <th className="px-4 py-3">Status Pembayaran</th>{" "}
-                <th className="px-4 py-3">Bukti Transfer</th>{" "}
-                <th className="px-4 py-3 text-right">Aksi</th>{" "}
-              </tr>{" "}
-            </thead>{" "}
+                <th className="px-4 py-3">No. Transaksi</th>
+                <th className="px-4 py-3">Pelanggan</th>
+                <th className="px-4 py-3">Tanggal</th>
+                <th className="px-4 py-3">Total</th>
+                <th className="px-4 py-3">Status Pembayaran</th>
+                <th className="px-4 py-3">Bukti Transfer</th>
+                <th className="px-4 py-3 text-right">Aksi</th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {" "}
-              {filteredOrders.map((o) => (
+              {filtered.map((o) => (
                 <tr key={o.id}>
-                  {" "}
-                  <td className="px-4 py-3 font-semibold">{o.id}</td>{" "}
+                  <td className="px-4 py-3 font-semibold">{o.id}</td>
                   <td className="px-4 py-3 text-slate-600">
-                    {o.customer.name}
-                  </td>{" "}
+                    {o.customer?.name || "-"}
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">{formatDate(o.createdAt)}</td>
                   <td className="px-4 py-3 text-slate-600">
-                    {" "}
-                    Rp {o.total.toLocaleString("id-ID")}{" "}
-                  </td>{" "}
+                    Rp {o.total?.toLocaleString("id-ID")}
+                  </td>
                   <td className="px-4 py-3">
-                    {" "}
                     <Badge
                       tone={
                         o.status === "Selesai"
                           ? "success"
                           : o.status === "Menunggu Verifikasi"
                             ? "neutral"
-                            : "warning"
+                            : o.status === "Batal"
+                              ? "warning"
+                              : "warning"
                       }
                     >
-                      {" "}
-                      {o.status}{" "}
-                    </Badge>{" "}
-                  </td>{" "}
+                      {o.status}
+                    </Badge>
+                  </td>
                   <td className="px-4 py-3 text-xs text-slate-500">
-                    {" "}
-                    {o.paymentProof || "Belum upload"}{" "}
-                  </td>{" "}
+                    {o.paymentProofName || o.paymentProofPath || "Belum upload"}
+                  </td>
                   <td className="px-4 py-3 text-right text-xs">
-                    {" "}
                     <div className="flex items-center justify-end gap-2">
-                      {" "}
-                      <button className="rounded-lg border border-slate-200 px-3 py-1 hover:border-amber-300 hover:text-amber-800">
-                        {" "}
-                        Detail{" "}
-                      </button>{" "}
-                      <button className="rounded-lg border border-emerald-100 px-3 py-1 text-emerald-700 hover:border-emerald-300">
-                        {" "}
-                        Konfirmasi{" "}
-                      </button>{" "}
-                    </div>{" "}
-                  </td>{" "}
+                      <Link
+                        href={`/orders/${o.id}`}
+                        className="rounded-lg border border-slate-200 px-3 py-1 hover:border-amber-300 hover:text-amber-800"
+                      >
+                        Edit / Detail
+                      </Link>
+                    </div>
+                  </td>
                 </tr>
-              ))}{" "}
-            </tbody>{" "}
-          </table>{" "}
-        </div>{" "}
-        <div className="grid gap-4 lg:grid-cols-2">
-          {" "}
-          <div className="rounded-2xl bg-white/80 p-4 shadow-sm ring-1 ring-black/5 backdrop-blur">
-            {" "}
-            <p className="text-sm font-semibold">Order Detail</p>{" "}
-            <p className="text-xs text-slate-500">Dengan bukti transfer</p>{" "}
-            <div className="mt-3 space-y-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm">
-              {" "}
-              <div className="flex items-center justify-between">
-                {" "}
-                <div>
-                  {" "}
-                  <p className="text-lg font-semibold">INV-10294</p>{" "}
-                  <p className="text-xs text-slate-500">
-                    {" "}
-                    Pelanggan: Sinta Lestari | Email: sinta.les@mail.com{" "}
-                  </p>{" "}
-                </div>{" "}
-                <Badge tone="neutral">Menunggu Verifikasi</Badge>{" "}
-              </div>{" "}
-              <div className="rounded-lg bg-white px-3 py-2">
-                {" "}
-                <p className="text-xs text-slate-500">Barang</p>{" "}
-                <ul className="mt-1 space-y-1">
-                  {" "}
-                  <li className="flex justify-between">
-                    {" "}
-                    <span>Kampas Rem Depan NMax (x1)</span>{" "}
-                    <span>Rp 185.000</span>{" "}
-                  </li>{" "}
-                  <li className="flex justify-between">
-                    {" "}
-                    <span>Oli Mesin 10W-40 (x2)</span>{" "}
-                    <span>Rp 190.000</span>{" "}
-                  </li>{" "}
-                </ul>{" "}
-                <div className="mt-2 flex items-center justify-between border-t border-dashed border-slate-200 pt-2 font-semibold">
-                  {" "}
-                  <span>Total</span> <span>Rp 565.000</span>{" "}
-                </div>{" "}
-              </div>{" "}
-              <div className="rounded-lg bg-white px-3 py-2">
-                {" "}
-                <p className="text-xs text-slate-500">Bukti transfer</p>{" "}
-                <div className="mt-2 flex items-center justify-between text-xs text-slate-600">
-                  {" "}
-                  <span>/dummy/bukti-10294.jpg</span>{" "}
-                  <button className="rounded-lg border border-emerald-100 px-3 py-1 text-emerald-700 hover:border-emerald-300">
-                    {" "}
-                    Konfirmasi Pembayaran{" "}
-                  </button>{" "}
-                </div>{" "}
-              </div>{" "}
-            </div>{" "}
-          </div>{" "}
-          <div className="rounded-2xl bg-white/80 p-4 shadow-sm ring-1 ring-black/5 backdrop-blur">
-            {" "}
-            <p className="text-sm font-semibold">Manual Add Order</p>{" "}
-            <p className="text-xs text-slate-500">Admin membuat pesanan baru</p>{" "}
-            <form className="mt-3 grid gap-3 sm:grid-cols-2">
-              {" "}
-              <input
-                className="rounded-xl border border-slate-200 px-3 py-2 text-sm sm:col-span-2"
-                placeholder="Nama pelanggan"
-              />{" "}
-              <input
-                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                placeholder="No. HP"
-              />{" "}
-              <input
-                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                placeholder="Alamat pengiriman"
-              />{" "}
-              <input
-                className="rounded-xl border border-slate-200 px-3 py-2 text-sm sm:col-span-2"
-                placeholder="Item: contoh 'Oli Mesin 10W-40 x2'"
-              />{" "}
-              <input
-                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                placeholder="Total (Rp)"
-              />{" "}
-              <select className="rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                {" "}
-                <option>Status: Menunggu Pembayaran</option>{" "}
-                <option>Menunggu Verifikasi</option>{" "}
-                <option>Selesai</option>{" "}
-              </select>{" "}
-              <div className="flex gap-2 sm:col-span-2">
-                {" "}
-                <button className="rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-2 text-xs font-semibold text-white shadow-sm">
-                  {" "}
-                  Simpan Order{" "}
-                </button>{" "}
-                <button className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold">
-                  {" "}
-                  Reset{" "}
-                </button>{" "}
-              </div>{" "}
-            </form>{" "}
-          </div>{" "}
-        </div>{" "}
-      </div>{" "}
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td className="px-4 py-3 text-xs text-slate-500" colSpan={7}>
+                    Tidak ada pesanan.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </Shell>
   );
 }
