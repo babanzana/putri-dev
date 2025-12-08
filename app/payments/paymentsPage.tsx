@@ -7,7 +7,7 @@ export default function PaymentsPage() {
   const { settings } = useStoreSettings();
   const account = settings.bankAccounts[0];
   return (
-    <Shell active="payments" requiresAuth>
+    <Shell active="history" requiresAuth>
       {" "}
       <div className="space-y-4">
         {" "}

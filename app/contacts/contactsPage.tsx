@@ -30,7 +30,7 @@ const suppliers = [
 ];
 export default function ContactsPage() {
   return (
-    <Shell active="contacts" requiresAuth>
+    <Shell active="settings" requiresAuth>
       {" "}
       <div className="space-y-4">
         {" "}
