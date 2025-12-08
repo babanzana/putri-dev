@@ -94,10 +94,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const unsub = onValue(productsRef, (snap) => {
       const val = snap.val() as Record<string, Product> | null;
       const map: Record<string, Product> = {};
-      Object.values(val ?? {}).forEach((p) => {
-        if (p?.slug) {
-          map[p.slug] = p;
-        }
+      Object.entries(val ?? {}).forEach(([key, p]) => {
+        if (!p) return;
+        const slug = p.slug || key;
+        map[slug] = { ...p, slug };
       });
       setProductMap(map);
       setItems((prev) => withStock(prev, map));

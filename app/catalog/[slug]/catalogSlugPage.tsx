@@ -31,9 +31,9 @@ export default function CatalogDetailPage() {
     const productsRef = ref(db, "products");
     const unsub = onValue(productsRef, (snap) => {
       const val = snap.val() as Record<string, Product> | null;
-      const list = val ? Object.values(val) : [];
-      const mapped = list
-        .map((p) => {
+      const mapped = Object.entries(val ?? {})
+        .map(([key, p]) => {
+          const slug = p.slug || key;
           const stock = Number(p.stock) || 0;
           const status =
             p.status === "Nonaktif"
@@ -51,6 +51,7 @@ export default function CatalogDetailPage() {
               : [placeholder];
           return {
             ...p,
+            slug,
             stock,
             price: Number(p.price) || 0,
             status,
