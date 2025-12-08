@@ -107,7 +107,7 @@ export function Shell({
     if (!hydrated || !isAuthenticated) return;
     const adminRoles = ["Admin", "Super Admin"];
     if (!adminRoles.includes(user?.role || "")) return;
-    const consumerKeys: NavKey[] = ["catalog", "cart", "history", "faq", "profile", "settings"];
+    const consumerKeys: NavKey[] = ["catalog", "cart", "history", "faq", "profile"];
     if (consumerKeys.includes(active)) {
       router.replace("/dashboard");
     }
