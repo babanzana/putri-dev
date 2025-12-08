@@ -1,6 +1,6 @@
 "use client";
 
-import { onValue, ref } from "firebase/database";
+import { onValue, ref, update } from "firebase/database";
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "../lib/firebase";
 import { supabase } from "../lib/supabaseClient";
@@ -97,6 +97,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       Object.entries(val ?? {}).forEach(([key, p]) => {
         if (!p) return;
         const slug = p.slug || key;
+        if (!p.slug) {
+          void update(ref(db, `products/${key}`), { slug });
+        }
         map[slug] = { ...p, slug };
       });
       setProductMap(map);
@@ -106,8 +109,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addItem = (slug: string, qty: number = 1) => {
-    const product = productMap[slug];
-    if (!product) return;
+    const product =
+      productMap[slug] ??
+      ({
+        slug,
+        name: slug,
+        price: 0,
+        stock: qty || 1,
+        category: "",
+        status: "Aktif",
+        description: "",
+        images: [],
+      } satisfies Product);
     setItems((prev) => {
       const found = prev.find((i) => i.slug === slug);
       if (found) {
