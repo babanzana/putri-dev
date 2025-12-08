@@ -18,7 +18,12 @@ type OrderItem = {
 
 type OrderRecord = {
   id: string;
-  customer?: { name?: string; email?: string; phone?: string; address?: string };
+  customer?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+  };
   status: string;
   total?: number;
   subtotal?: number;
@@ -33,6 +38,8 @@ type OrderRecord = {
 const statusOptions = [
   "Menunggu Upload",
   "Menunggu Verifikasi",
+  "Belum Lunas",
+  "Pengiriman",
   "Selesai",
   "Batal",
 ];
@@ -41,7 +48,12 @@ const formatCurrency = (value?: number) =>
   `Rp ${(Number(value) || 0).toLocaleString("id-ID")}`;
 
 const formatDate = (ts?: number) =>
-  ts ? new Date(ts).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }) : "-";
+  ts
+    ? new Date(ts).toLocaleString("id-ID", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : "-";
 
 export default function OrderEditPage() {
   const router = useRouter();
@@ -84,7 +96,9 @@ export default function OrderEditPage() {
         setProofUrl(path);
         return;
       }
-      const { data, error } = await supabase.storage.from("putridev").createSignedUrl(path, 60 * 60);
+      const { data, error } = await supabase.storage
+        .from("putridev")
+        .createSignedUrl(path, 60 * 60);
       if (error) {
         setProofUrl(null);
         return;
@@ -108,11 +122,13 @@ export default function OrderEditPage() {
           const key = `${it.slug || it.name || "item"}-${idx}`;
           if (!it.image) return [key, ""];
           if (it.image.startsWith("http")) return [key, it.image];
-          const { data, error } = await supabase.storage.from("putridev").createSignedUrl(it.image, 60 * 60);
+          const { data, error } = await supabase.storage
+            .from("putridev")
+            .createSignedUrl(it.image, 60 * 60);
           if (data?.signedUrl) return [key, data.signedUrl];
           if (error && bucketUrl) return [key, `${bucketUrl}${it.image}`];
           return [key, ""];
-        }),
+        })
       );
       setItemUrls(Object.fromEntries(entries));
     };
@@ -123,7 +139,7 @@ export default function OrderEditPage() {
     order?.subtotal ??
     order?.items?.reduce(
       (acc, item) => acc + (Number(item.qty) || 0) * (Number(item.price) || 0),
-      0,
+      0
     ) ??
     0;
   const shipping = order?.shipping ?? 0;
@@ -153,7 +169,7 @@ export default function OrderEditPage() {
   const badgeTone =
     status === "Selesai"
       ? "success"
-      : status === "Menunggu Verifikasi"
+      : ["Menunggu Verifikasi", "Pengiriman"].includes(status)
         ? "neutral"
         : status === "Batal"
           ? "warning"
@@ -189,37 +205,53 @@ export default function OrderEditPage() {
             <p className="text-xs text-slate-500">
               {order.customer?.name} - {order.customer?.email}
             </p>
-            <p className="text-xs text-slate-500">Dibuat: {formatDate(order.createdAt)}</p>
+            <p className="text-xs text-slate-500">
+              Dibuat: {formatDate(order.createdAt)}
+            </p>
           </div>
           <Badge tone={badgeTone}>{order.status}</Badge>
         </div>
 
         <div className="rounded-2xl bg-white/80 p-4 shadow-sm ring-1 ring-black/5">
-          <h3 className="text-sm font-semibold text-slate-700">Detail Customer</h3>
+          <h3 className="text-sm font-semibold text-slate-700">
+            Detail Customer
+          </h3>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
               <p className="text-xs text-slate-500">Nama</p>
-              <p className="text-sm text-slate-700">{order.customer?.name || "-"}</p>
+              <p className="text-sm text-slate-700">
+                {order.customer?.name || "-"}
+              </p>
             </div>
             <div>
               <p className="text-xs text-slate-500">Email</p>
-              <p className="text-sm text-slate-700">{order.customer?.email || "-"}</p>
+              <p className="text-sm text-slate-700">
+                {order.customer?.email || "-"}
+              </p>
             </div>
             <div>
               <p className="text-xs text-slate-500">Telepon</p>
-              <p className="text-sm text-slate-700">{order.customer?.phone || "-"}</p>
+              <p className="text-sm text-slate-700">
+                {order.customer?.phone || "-"}
+              </p>
             </div>
             <div className="sm:col-span-2">
               <p className="text-xs text-slate-500">Alamat</p>
-              <p className="text-sm text-slate-700">{order.customer?.address || "-"}</p>
+              <p className="text-sm text-slate-700">
+                {order.customer?.address || "-"}
+              </p>
             </div>
           </div>
         </div>
 
         <div className="rounded-2xl bg-white/80 p-4 shadow-sm ring-1 ring-black/5">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-700">Item Pesanan</h3>
-            <p className="text-xs text-slate-500">Dibuat: {formatDate(order.createdAt)}</p>
+            <h3 className="text-sm font-semibold text-slate-700">
+              Item Pesanan
+            </h3>
+            <p className="text-xs text-slate-500">
+              Dibuat: {formatDate(order.createdAt)}
+            </p>
           </div>
           <div className="mt-3 space-y-2">
             {order.items && order.items.length > 0 ? (
@@ -233,7 +265,9 @@ export default function OrderEditPage() {
                       {item.image ? (
                         <img
                           src={
-                            itemUrls[`${item.slug || item.name || "item"}-${idx}`] ||
+                            itemUrls[
+                              `${item.slug || item.name || "item"}-${idx}`
+                            ] ||
                             (item.image.startsWith("http")
                               ? item.image
                               : `${process.env.NEXT_PUBLIC_SUPABASE_URL || ""}/storage/v1/object/public/putridev/${item.image}`)
@@ -248,26 +282,34 @@ export default function OrderEditPage() {
                       )}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-slate-800">{item.name}</p>
+                      <p className="text-sm font-semibold text-slate-800">
+                        {item.name}
+                      </p>
                       <p className="text-xs text-slate-500">
                         Qty: {item.qty} x {formatCurrency(item.price)}
                       </p>
                     </div>
                   </div>
                   <p className="text-sm font-semibold text-slate-800">
-                    {formatCurrency((Number(item.qty) || 0) * (Number(item.price) || 0))}
+                    {formatCurrency(
+                      (Number(item.qty) || 0) * (Number(item.price) || 0)
+                    )}
                   </p>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-slate-500">Belum ada item pada pesanan ini.</p>
+              <p className="text-sm text-slate-500">
+                Belum ada item pada pesanan ini.
+              </p>
             )}
           </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-2xl bg-white/80 p-4 shadow-sm ring-1 ring-black/5">
-            <h3 className="text-sm font-semibold text-slate-700">Ringkasan Pembayaran</h3>
+            <h3 className="text-sm font-semibold text-slate-700">
+              Ringkasan Pembayaran
+            </h3>
             <div className="mt-3 space-y-2 text-sm text-slate-700">
               <div className="flex justify-between">
                 <span>Subtotal</span>
@@ -281,31 +323,35 @@ export default function OrderEditPage() {
                 <span>Total</span>
                 <span>{formatCurrency(derivedTotal)}</span>
               </div>
-            <div className="pt-2">
-              <p className="text-xs text-slate-500">Bukti pembayaran</p>
-              {proofUrl ? (
-                <div className="mt-1 flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowProof(true)}
-                    className="h-14 w-14 overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
-                    title="Lihat bukti"
-                  >
-                    <img
-                      src={proofUrl}
-                      alt="Bukti pembayaran"
-                      className="h-full w-full object-cover"
-                    />
-                  </button>
-                  <div className="text-sm text-slate-700">
-                    <p className="font-semibold">{proofName || "Bukti"}</p>
-                    <p className="text-xs text-slate-500">Klik thumbnail untuk perbesar</p>
+              <div className="pt-2">
+                <p className="text-xs text-slate-500">Bukti pembayaran</p>
+                {proofUrl ? (
+                  <div className="mt-1 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowProof(true)}
+                      className="h-14 w-14 overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
+                      title="Lihat bukti"
+                    >
+                      <img
+                        src={proofUrl}
+                        alt="Bukti pembayaran"
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                    <div className="text-sm text-slate-700">
+                      <p className="font-semibold">{proofName || "Bukti"}</p>
+                      <p className="text-xs text-slate-500">
+                        Klik thumbnail untuk perbesar
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <p className="text-sm text-slate-700">Belum ada bukti pembayaran</p>
-              )}
-            </div>
+                ) : (
+                  <p className="text-sm text-slate-700">
+                    Belum ada bukti pembayaran
+                  </p>
+                )}
+              </div>
               {order.note && (
                 <div className="pt-2">
                   <p className="text-xs text-slate-500">Catatan</p>
@@ -319,7 +365,9 @@ export default function OrderEditPage() {
             className="space-y-3 rounded-2xl bg-white/80 p-4 shadow-sm ring-1 ring-black/5"
             onSubmit={handleSave}
           >
-            <h3 className="text-sm font-semibold text-slate-700">Update Pesanan</h3>
+            <h3 className="text-sm font-semibold text-slate-700">
+              Update Pesanan
+            </h3>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <p className="text-xs text-slate-500">Status</p>
@@ -337,7 +385,7 @@ export default function OrderEditPage() {
                 </div>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Total (Rp)</p>
+                <p className="text-xs text-slate-500">Total Bayar (Rp)</p>
                 <input
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                   type="number"
@@ -354,13 +402,17 @@ export default function OrderEditPage() {
                 />
               </div>
             </div>
-            {error && <p className="text-xs font-semibold text-rose-600">{error}</p>}
+            {error && (
+              <p className="text-xs font-semibold text-rose-600">{error}</p>
+            )}
             <div className="flex gap-2">
               <button
                 type="submit"
                 disabled={saving}
                 className={`rounded-lg px-4 py-2 text-xs font-semibold text-white shadow-sm ${
-                  saving ? "bg-slate-300" : "bg-gradient-to-r from-emerald-500 to-teal-600"
+                  saving
+                    ? "bg-slate-300"
+                    : "bg-gradient-to-r from-emerald-500 to-teal-600"
                 }`}
               >
                 {saving ? "Menyimpan..." : "Simpan"}
@@ -377,8 +429,14 @@ export default function OrderEditPage() {
         </div>
       </div>
       {showProof && proofUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setShowProof(false)}>
-          <div className="max-h-[90vh] max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setShowProof(false)}
+        >
+          <div
+            className="max-h-[90vh] max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-end border-b border-slate-200 p-3">
               <button
                 type="button"

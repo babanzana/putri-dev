@@ -36,6 +36,9 @@ export default function HistoryPage() {
   const [proofUrl, setProofUrl] = useState<string | null>(null);
   const [proofUploading, setProofUploading] = useState(false);
   const [proofError, setProofError] = useState<string | null>(null);
+  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const [startDate, setStartDate] = useState(todayStr);
+  const [endDate, setEndDate] = useState(todayStr);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -68,7 +71,19 @@ export default function HistoryPage() {
     void loadProof();
   }, [selected?.paymentProofPath]);
 
-  const totalOrders = useMemo(() => orders.length, [orders]);
+  const filteredOrders = useMemo(() => {
+    if (!startDate && !endDate) return orders;
+    const startTs = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : null;
+    const endTs = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : null;
+    return orders.filter((o) => {
+      const t = o.createdAt;
+      if (startTs && t < startTs) return false;
+      if (endTs && t > endTs) return false;
+      return true;
+    });
+  }, [endDate, orders, startDate]);
+
+  const totalOrders = useMemo(() => filteredOrders.length, [filteredOrders]);
 
   const handleProofUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -120,7 +135,41 @@ export default function HistoryPage() {
             <p className="text-sm text-slate-500">Riwayat transaksi konsumen</p>
             <h1 className="text-2xl font-semibold">Order History</h1>
           </div>
-          <Badge tone="neutral">Total: {totalOrders}</Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 rounded-xl bg-white/70 p-2 text-xs text-slate-600 shadow-sm ring-1 ring-slate-200">
+              <div className="flex items-center gap-1">
+                <span>Dari</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                <span>Sampai</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                />
+              </div>
+              {(startDate || endDate) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStartDate("");
+                    setEndDate("");
+                  }}
+                  className="text-xs font-semibold text-amber-700 hover:underline"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+            <Badge tone="neutral">Total: {totalOrders}</Badge>
+          </div>
         </div>
         <div className="overflow-auto rounded-2xl border border-slate-100 bg-white/80 shadow-sm ring-1 ring-black/5 backdrop-blur">
           <table className="min-w-full divide-y divide-slate-100 text-sm">
@@ -140,14 +189,14 @@ export default function HistoryPage() {
                   </td>
                 </tr>
               )}
-              {!loading && orders.length === 0 && (
+              {!loading && filteredOrders.length === 0 && (
                 <tr>
                   <td className="px-4 py-3 text-xs text-slate-500" colSpan={4}>
-                    Belum ada transaksi.
+                    Tidak ada transaksi pada rentang ini.
                   </td>
                 </tr>
               )}
-              {orders.map((o) => (
+              {filteredOrders.map((o) => (
                 <tr
                   key={o.id}
                   className="cursor-pointer transition hover:bg-amber-50"
@@ -159,7 +208,7 @@ export default function HistoryPage() {
                       tone={
                         o.status === "Selesai"
                           ? "success"
-                          : o.status === "Menunggu Verifikasi"
+                          : ["Menunggu Verifikasi", "Pengiriman"].includes(o.status)
                             ? "neutral"
                             : "warning"
                       }

@@ -18,7 +18,7 @@ type AuthUser = {
   uid: string;
   name: string;
   email: string;
-  role: "admin" | "customer";
+  role: "Super Admin" | "Admin" | "Customer";
   label?: string;
 };
 
@@ -44,6 +44,13 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function normalizeRole(role?: string | null): AuthUser["role"] {
+  const val = (role || "").trim().toLowerCase();
+  if (val.includes("super")) return "Super Admin";
+  if (val === "admin") return "Admin";
+  return "Customer";
+}
+
 function mapFirebaseUser(fbUser: FirebaseUser): AuthUser {
   const email = fbUser.email || "";
   const adminMatch = admins.find((a) => a.email.toLowerCase() === email.toLowerCase());
@@ -52,7 +59,7 @@ function mapFirebaseUser(fbUser: FirebaseUser): AuthUser {
       uid: fbUser.uid,
       name: fbUser.displayName || adminMatch.name || email,
       email,
-      role: "admin",
+      role: normalizeRole(adminMatch.role),
       label: adminMatch.role,
     };
   }
@@ -61,7 +68,7 @@ function mapFirebaseUser(fbUser: FirebaseUser): AuthUser {
     uid: fbUser.uid,
     name: fbUser.displayName || email,
     email,
-    role: "customer",
+    role: "Customer",
   };
 }
 
@@ -103,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user?.uid) return;
     const userRef = ref(db, `users/${user.uid}`);
     const unsub = onValue(userRef, (snap) => {
-      const val = snap.val() as { name?: string; email?: string } | null;
+      const val = snap.val() as { name?: string; email?: string; role?: string; label?: string | null } | null;
       if (val) {
         setUser((prev) =>
           prev
@@ -111,6 +118,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 ...prev,
                 name: val.name || prev.name,
                 email: val.email || prev.email,
+                role: normalizeRole(val.role),
+                label: val.label ?? prev.label,
               }
             : prev,
         );
@@ -161,7 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: normalizedEmail,
           phone: trimmedPhone,
           address: trimmedAddress,
-          role: authUser.role,
+          role: "Customer",
           label: authUser.label || null,
           createdAt: Date.now(),
           updatedAt: Date.now(),

@@ -35,7 +35,8 @@ type NavKey =
   | "orders"
   | "reportStock"
   | "reportSales"
-  | "settings";
+  | "settings"
+  | "users";
 
 type NavItem = { key: NavKey; label: string; href: string; requiresAuth?: boolean };
 
@@ -52,8 +53,10 @@ const adminNav: NavItem[] = [
   { key: "dashboard", label: "Dashboard", href: "/dashboard", requiresAuth: true },
   { key: "products", label: "Produk & Stok", href: "/products", requiresAuth: true },
   { key: "orders", label: "Pemesanan", href: "/orders", requiresAuth: true },
-  { key: "reportStock", label: "Laporan Stok", href: "/reports#stok", requiresAuth: true },
-  { key: "reportSales", label: "Laporan Penjualan", href: "/reports#penjualan", requiresAuth: true },
+  { key: "reportStock", label: "Laporan Stok", href: "/reports/stock", requiresAuth: true },
+  { key: "reportSales", label: "Laporan Penjualan", href: "/reports/sales", requiresAuth: true },
+  { key: "users", label: "User", href: "/users", requiresAuth: true },
+  { key: "settings", label: "Settings", href: "/settings", requiresAuth: true },
 ];
 
 const consumerNav: NavItem[] = [...primaryNav];
@@ -72,6 +75,7 @@ const navIcon: Record<NavKey, JSX.Element> = {
   reportStock: <FilePieChart className="h-4 w-4" />,
   reportSales: <FilePieChart className="h-4 w-4" />,
   settings: <Settings className="h-4 w-4" />,
+  users: <User className="h-4 w-4" />,
 };
 
 const publicNav: NavItem[] = [
@@ -99,9 +103,22 @@ export function Shell({
     }
   }, [requiresAuth, hydrated, isAuthenticated, router]);
 
+  // Jika admin/Super Admin mengakses halaman consumer, arahkan ke dashboard.
+  useEffect(() => {
+    if (!hydrated || !isAuthenticated) return;
+    const adminRoles = ["Admin", "Super Admin"];
+    if (!adminRoles.includes(user?.role || "")) return;
+    const consumerKeys: NavKey[] = ["catalog", "cart", "history", "faq", "profile", "settings"];
+    if (consumerKeys.includes(active)) {
+      router.replace("/dashboard");
+    }
+  }, [active, hydrated, isAuthenticated, router, user?.role]);
+
   const visibleNav = isAuthenticated
-    ? user?.role === "admin"
-      ? adminNav
+    ? user?.role === "Admin" || user?.role === "Super Admin"
+      ? adminNav.filter((item) =>
+          item.key === "users" ? user.role === "Super Admin" : true,
+        )
       : consumerNav
     : publicNav;
   const isLocked = requiresAuth && hydrated && !isAuthenticated;
@@ -140,7 +157,9 @@ export function Shell({
             {isAuthenticated ? (
               <div className="flex flex-wrap items-center gap-3 rounded-full bg-slate-100 px-4 py-2 text-xs font-medium text-slate-700">
                 <div className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-800 ring-1 ring-emerald-200">
-                  {user?.role === "admin" ? user?.label || "Admin" : "Konsumen"}
+                  {user?.role === "Admin" || user?.role === "Super Admin"
+                    ? user?.role
+                    : "Konsumen"}
                 </div>
                 <div className="text-left">
                   <p className="text-[11px] uppercase tracking-wide text-slate-500">

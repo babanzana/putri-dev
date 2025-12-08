@@ -2,11 +2,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Banknote, MessageCircle } from "lucide-react";
 import { Shell } from "../components/Shell";
 import { Badge } from "../components/ui";
 import { useCart } from "../components/CartProvider";
+import { useStoreSettings } from "../lib/useStoreSettings";
 export default function CartPage() {
   const router = useRouter();
+  const { settings } = useStoreSettings();
+  const bank = settings.bankAccounts[0];
   const {
     items,
     updateQty,
@@ -158,6 +162,25 @@ export default function CartPage() {
             </button>{" "}
           </div>{" "}
         </div>{" "}
+        <div className="rounded-2xl bg-white/80 p-4 shadow-sm ring-1 ring-black/5">
+          <p className="text-sm font-semibold text-slate-900">
+            Pembayaran & Konfirmasi
+          </p>
+          <div className="mt-2 space-y-1 text-xs text-slate-600">
+            <div className="flex items-center gap-2 font-semibold text-slate-800">
+              <Banknote className="h-4 w-4 text-amber-600" />
+              <span>
+                {bank
+                  ? `${bank.bank} ${bank.number} a.n ${bank.holder}`
+                  : "Rekening belum diatur"}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <MessageCircle className="h-4 w-4 text-emerald-600" />
+              <span>Konfirmasi via WhatsApp {settings.contact.whatsapp || "-"}</span>
+            </div>
+          </div>
+        </div>
       </div>{" "}
     </Shell>
   );

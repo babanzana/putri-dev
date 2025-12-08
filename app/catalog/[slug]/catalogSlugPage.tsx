@@ -8,6 +8,7 @@ import { Badge } from "../../components/ui";
 import { useCart } from "../../components/CartProvider";
 import { db } from "../../lib/firebase";
 import { supabase } from "../../lib/supabaseClient";
+import fallbackImg from "../../assets/loading-image.jpg";
 import type { Product } from "../../lib/dummyData";
 type ViewProduct = Product & { rawImages: string[] };
 export default function CatalogDetailPage() {
@@ -40,14 +41,13 @@ export default function CatalogDetailPage() {
                 ? "Stok Menipis"
                 : "Aktif";
           const rawImages = p.images && p.images.length > 0 ? p.images : [];
+          const placeholder = fallbackImg.src;
           const images =
             rawImages.length > 0
               ? rawImages.map((img) =>
-                  img && img.startsWith("http")
-                    ? img
-                    : "https://placehold.co/800x600?text=Loading+Image",
+                  img && img.startsWith("http") ? img : placeholder,
                 )
-              : ["https://placehold.co/800x600?text=No+Image"];
+              : [placeholder];
           return {
             ...p,
             stock,
@@ -75,16 +75,16 @@ export default function CatalogDetailPage() {
             p.rawImages.length > 0
               ? await Promise.all(
                   p.rawImages.map(async (img) => {
-                    if (!img) return "https://placehold.co/800x600?text=No+Image";
+                    if (!img) return placeholder;
                     if (img.startsWith("http")) return img;
                     const cleaned = img.startsWith("/") ? img.slice(1) : img;
                     const { data } = await supabase.storage
                       .from("putridev")
                       .createSignedUrl(cleaned, 60 * 60);
-                    return data?.signedUrl || "https://placehold.co/800x600?text=No+Image";
+                    return data?.signedUrl || placeholder;
                   }),
                 )
-              : ["https://placehold.co/800x600?text=No+Image"];
+              : [placeholder];
           return { ...p, images: imgs };
         }),
       );

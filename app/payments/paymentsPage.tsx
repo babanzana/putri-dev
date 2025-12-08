@@ -1,6 +1,11 @@
+"use client";
 import { Shell } from "../components/Shell";
 import { Badge } from "../components/ui";
+import { Banknote, MessageCircle } from "lucide-react";
+import { useStoreSettings } from "../lib/useStoreSettings";
 export default function PaymentsPage() {
+  const { settings } = useStoreSettings();
+  const account = settings.bankAccounts[0];
   return (
     <Shell active="payments" requiresAuth>
       {" "}
@@ -35,11 +40,15 @@ export default function PaymentsPage() {
                 {" "}
                 <div>
                   {" "}
-                  <p className="text-xs text-slate-500">Bank</p>{" "}
-                  <p className="text-lg font-semibold">BCA - 1234567890</p>{" "}
+                  <p className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                    <Banknote className="h-4 w-4 text-amber-600" />
+                    <span>Bank</span>
+                  </p>{" "}
+                  <p className="text-lg font-semibold">
+                    {account ? `${account.bank} - ${account.number}` : "Rekening belum diatur"}
+                  </p>{" "}
                   <p className="text-xs text-slate-500">
-                    {" "}
-                    a.n. PT Ponti Pratama Indonesia{" "}
+                    a.n. {account?.holder || "-"}{" "}
                   </p>{" "}
                 </div>{" "}
                 <Badge tone="neutral">VA/Transfer</Badge>{" "}
@@ -67,6 +76,10 @@ export default function PaymentsPage() {
                 Instruksi: transfer sesuai nominal, simpan bukti, kemudian
                 upload pada form di bawah.{" "}
               </div>{" "}
+              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700">
+                <MessageCircle className="h-4 w-4" />
+                <span>Konfirmasi via WhatsApp {settings.contact.whatsapp || "-"}</span>
+              </div>
             </div>{" "}
           </div>{" "}
           <div className="rounded-2xl bg-white/80 p-4 shadow-sm ring-1 ring-black/5 backdrop-blur">

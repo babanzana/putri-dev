@@ -7,7 +7,7 @@ import { Shell } from "../components/Shell";
 import { useAuth } from "../components/AuthProvider";
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated, hydrated } = useAuth();
+  const { login, isAuthenticated, hydrated, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -15,9 +15,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   useEffect(() => {
     if (hydrated && isAuthenticated) {
-      router.replace("/catalog");
+      const destination =
+        user?.role === "Admin" || user?.role === "Super Admin" ? "/dashboard" : "/catalog";
+      router.replace(destination);
     }
-  }, [hydrated, isAuthenticated, router]);
+  }, [hydrated, isAuthenticated, router, user?.role]);
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSubmitting) return;
@@ -29,7 +31,9 @@ export default function LoginPage() {
       setError(result.error);
       return;
     }
-    router.replace("/catalog");
+    const destination =
+      result.user.role === "Admin" || result.user.role === "Super Admin" ? "/dashboard" : "/catalog";
+    router.replace(destination);
   };
   return (
     <Shell active="login" showQuickInfo={false}>

@@ -24,6 +24,7 @@ export default function ProductsPage() {
   const [category, setCategory] = useState("Semua");
   const [status, setStatus] = useState("Semua");
   const [error, setError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
 
   useEffect(() => {
     const productsRef = ref(db, "products");
@@ -63,7 +64,11 @@ export default function ProductsPage() {
       const matchSearch =
         p.name.toLowerCase().includes(term) || (p.category || "").toLowerCase().includes(term);
       const matchCategory = category === "Semua" || p.category === category;
-      const matchStatus = status === "Semua" || p.status === status;
+      const matchStatus =
+        status === "Semua" ||
+        (status === "Stok Menipis" && p.derivedStatus === "Stok Menipis") ||
+        (status === "Aktif" && p.derivedStatus === "Aktif") ||
+        (status === "Nonaktif" && p.derivedStatus === "Nonaktif");
       return matchSearch && matchCategory && matchStatus;
     });
   }, [products, search, category, status]);
@@ -182,22 +187,22 @@ export default function ProductsPage() {
                   {p.derivedStatus}
                 </Badge>
               </td>
-                  <td className="px-4 py-3 text-right text-xs">
-                    <div className="flex items-center justify-end gap-2">
-                      <Link
-                        href={`/products/${p.slug}`}
-                        className="rounded-lg border border-slate-200 px-3 py-1 hover:border-emerald-300 hover:text-emerald-800"
-                      >
-                        Edit
-                      </Link>
-                      <button
-                        className="rounded-lg border border-slate-200 px-3 py-1 hover:border-rose-300 hover:text-rose-800"
-                        onClick={() => handleDelete(p.slug)}
-                      >
-                        Hapus
-                      </button>
-                    </div>
-                  </td>
+              <td className="px-4 py-3 text-right text-xs">
+                <div className="flex items-center justify-end gap-2">
+                  <Link
+                    href={`/products/${p.slug}`}
+                    className="rounded-lg border border-slate-200 px-3 py-1 hover:border-emerald-300 hover:text-emerald-800"
+                  >
+                    Edit
+                  </Link>
+                  <button
+                    className="rounded-lg border border-slate-200 px-3 py-1 hover:border-rose-300 hover:text-rose-800"
+                    onClick={() => setPendingDelete(p)}
+                  >
+                    Hapus
+                  </button>
+                </div>
+              </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
@@ -213,6 +218,36 @@ export default function ProductsPage() {
         {error && (
           <div className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 ring-1 ring-rose-200">
             {error}
+          </div>
+        )}
+        {pendingDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
+              <h3 className="text-lg font-semibold text-slate-900">Hapus produk?</h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Produk <span className="font-semibold">{pendingDelete.name}</span> akan dihapus
+                permanen dari database. Lanjutkan?
+              </p>
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700"
+                  onClick={() => setPendingDelete(null)}
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg bg-gradient-to-r from-rose-500 to-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm"
+                  onClick={async () => {
+                    await handleDelete(pendingDelete.slug);
+                    setPendingDelete(null);
+                  }}
+                >
+                  Ya, hapus
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

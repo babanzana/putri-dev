@@ -4,16 +4,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChangeEvent, useEffect, useState } from "react";
+import { Banknote, MessageCircle } from "lucide-react";
 import { Shell } from "../components/Shell";
 import { Badge } from "../components/ui";
 import { useCart } from "../components/CartProvider";
 import { useAuth } from "../components/AuthProvider";
 import { db } from "../lib/firebase";
 import { supabase } from "../lib/supabaseClient";
+import { useStoreSettings } from "../lib/useStoreSettings";
 export default function CheckoutPage() {
   const router = useRouter();
   const { selectedItems, totalPrice, clear } = useCart();
   const { user } = useAuth();
+  const { settings } = useStoreSettings();
   const [recipient, setRecipient] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -291,9 +294,23 @@ export default function CheckoutPage() {
             <p className="text-sm font-semibold text-slate-900">
               Upload Bukti Pembayaran
             </p>
-            <p className="text-xs text-slate-500">
-              Transfer ke BCA 1234567890 a.n Ponti Pratama
-            </p>
+            <div className="space-y-1 text-xs text-slate-600">
+              <div className="flex items-center gap-2 font-semibold text-slate-800">
+                <Banknote className="h-4 w-4 text-amber-600" />
+                <span>
+                  Transfer ke{" "}
+                  {settings.bankAccounts[0]
+                    ? `${settings.bankAccounts[0].bank} ${settings.bankAccounts[0].number} a.n ${settings.bankAccounts[0].holder}`
+                    : "rekening belum diatur"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <MessageCircle className="h-4 w-4 text-emerald-600" />
+                <span>
+                  Konfirmasi via WhatsApp {settings.contact.whatsapp || "-"}
+                </span>
+              </div>
+            </div>
             <div className="space-y-3 rounded-xl border border-dashed border-slate-200 bg-white/70 p-4">
               {!proofPreview && (
                 <label

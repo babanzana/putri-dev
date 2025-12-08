@@ -18,6 +18,7 @@ type OrderRecord = {
   items?: OrderItem[];
   paymentProofName?: string | null;
   paymentProofPath?: string | null;
+  paymentMethod?: "CASH" | "CASHLESS";
   createdAt?: number;
   note?: string;
 };
@@ -26,6 +27,8 @@ const statusOptions = [
   "Semua",
   "Menunggu Upload",
   "Menunggu Verifikasi",
+  "Belum Lunas",
+  "Pengiriman",
   "Selesai",
   "Batal",
 ];
@@ -78,28 +81,36 @@ export default function OrdersPage() {
   return (
     <Shell active="orders" requiresAuth>
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm text-slate-500">Modul Transaksi Pemesanan</p>
-            <h2 className="text-2xl font-semibold">Order List & Detail</h2>
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm text-slate-500">Modul Transaksi Pemesanan</p>
+              <h2 className="text-2xl font-semibold">Order List & Detail</h2>
+            </div>
+            <Link
+              href="/orders/new"
+              className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800"
+            >
+              + Manual Add Order
+            </Link>
           </div>
-          <div className="flex flex-wrap items-end gap-3 text-xs text-slate-500">
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-100 bg-white/80 p-3 text-xs text-slate-500 shadow-sm ring-1 ring-black/5">
             <div className="flex flex-col gap-1">
-              <label htmlFor="order-search">Pencarian</label>
+              <label htmlFor="order-search" className="pl-1">Pencarian</label>
               <input
                 id="order-search"
-                className="rounded-full border border-slate-200 px-3 py-2 text-sm"
+                className="w-52 rounded-full border border-slate-200 px-3 py-2 text-sm shadow-inner"
                 placeholder="Cari ID / nama / email"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label htmlFor="order-status">Filter Status</label>
+              <label htmlFor="order-status" className="pl-1">Filter Status</label>
               <div className="relative">
                 <select
                   id="order-status"
-                  className="appearance-none rounded-full border border-slate-200 px-3 py-2 pr-9 text-sm"
+                  className="appearance-none rounded-full border border-slate-200 px-3 py-2 pr-9 text-sm shadow-inner"
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
                 >
@@ -111,32 +122,24 @@ export default function OrdersPage() {
               </div>
             </div>
             <div className="flex flex-col gap-1">
-              <label htmlFor="order-date-from">Dari</label>
+              <label htmlFor="order-date-from" className="pl-1">Dari</label>
               <input
                 id="order-date-from"
                 type="date"
-                className="rounded-full border border-slate-200 px-3 py-2 text-sm"
+                className="rounded-full border border-slate-200 px-3 py-2 text-sm shadow-inner"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label htmlFor="order-date-to">Sampai</label>
+              <label htmlFor="order-date-to" className="pl-1">Sampai</label>
               <input
                 id="order-date-to"
                 type="date"
-                className="rounded-full border border-slate-200 px-3 py-2 text-sm"
+                className="rounded-full border border-slate-200 px-3 py-2 text-sm shadow-inner"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
               />
-            </div>
-            <div className="flex items-center gap-2 self-end">
-              <Link
-                href="/orders/new"
-                className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-sm"
-              >
-                + Manual Add Order
-              </Link>
             </div>
           </div>
         </div>
@@ -149,6 +152,7 @@ export default function OrdersPage() {
                 <th className="px-4 py-3">Pelanggan</th>
                 <th className="px-4 py-3">Tanggal</th>
                 <th className="px-4 py-3">Total</th>
+                <th className="px-4 py-3">Metode Bayar</th>
                 <th className="px-4 py-3">Status Pembayaran</th>
                 <th className="px-4 py-3">Bukti Transfer</th>
                 <th className="px-4 py-3 text-right">Aksi</th>
@@ -165,12 +169,15 @@ export default function OrdersPage() {
                   <td className="px-4 py-3 text-slate-600">
                     Rp {o.total?.toLocaleString("id-ID")}
                   </td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {o.paymentMethod === "CASH" ? "CASH" : "CASHLESS"}
+                  </td>
                   <td className="px-4 py-3">
                     <Badge
                       tone={
                         o.status === "Selesai"
                           ? "success"
-                          : o.status === "Menunggu Verifikasi"
+                          : ["Menunggu Verifikasi", "Pengiriman"].includes(o.status)
                             ? "neutral"
                             : o.status === "Batal"
                               ? "warning"
@@ -181,7 +188,9 @@ export default function OrdersPage() {
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-500">
-                    {o.paymentProofName || o.paymentProofPath || "Belum upload"}
+                    {o.paymentMethod === "CASH"
+                      ? "Tunai (tidak perlu bukti)"
+                      : o.paymentProofName || o.paymentProofPath || "Belum upload"}
                   </td>
                   <td className="px-4 py-3 text-right text-xs">
                     <div className="flex items-center justify-end gap-2">

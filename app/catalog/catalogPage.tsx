@@ -12,6 +12,9 @@ import { supabase } from "../lib/supabaseClient";
 import type { Product } from "../lib/dummyData";
 type ViewProduct = Product & { rawImages: string[] };
 
+import fallbackImg from "../assets/loading-image.jpg";
+const FALLBACK_IMAGE = fallbackImg.src;
+
 export default function CatalogPage() {
   const [products, setProducts] = useState<ViewProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,9 +42,9 @@ export default function CatalogPage() {
               ? rawImages.map((img) =>
                   img && img.startsWith("http")
                     ? img
-                    : "https://placehold.co/600x400?text=Loading+Image",
+                    : FALLBACK_IMAGE,
                 )
-              : ["https://placehold.co/600x400?text=No+Image"];
+              : [FALLBACK_IMAGE];
           return {
             ...p,
             price: Number(p.price) || 0,
@@ -67,16 +70,16 @@ export default function CatalogPage() {
             p.rawImages.length > 0
               ? await Promise.all(
                   p.rawImages.map(async (img) => {
-                    if (!img) return "https://placehold.co/600x400?text=No+Image";
+                    if (!img) return FALLBACK_IMAGE;
                     if (img.startsWith("http")) return img;
                     const cleaned = img.startsWith("/") ? img.slice(1) : img;
                     const { data } = await supabase.storage
                       .from("putridev")
                       .createSignedUrl(cleaned, 60 * 60);
-                    return data?.signedUrl || "https://placehold.co/600x400?text=No+Image";
+                    return data?.signedUrl || FALLBACK_IMAGE;
                   }),
                 )
-              : ["https://placehold.co/600x400?text=No+Image"];
+              : [FALLBACK_IMAGE];
           return { ...p, images: imgs };
         }),
       );

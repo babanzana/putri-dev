@@ -19,10 +19,29 @@ type Product = {
 
 type ImageItem = { path: string; url: string };
 
+const CATEGORY_OPTIONS = [
+  "Electrical",
+  "Tires",
+  "Accessories",
+  "Brake System",
+  "Engine",
+  "Suspension",
+  "Protection",
+  "Filter",
+  "Safety",
+  "Transmission",
+  "Lighting",
+  "Oli & Fluids",
+  "Drivetrain",
+  "Other",
+];
+
 export function ProductForm({ initial }: { initial?: Product | null }) {
   const router = useRouter();
   const [name, setName] = useState(initial?.name ?? "");
-  const [category, setCategory] = useState(initial?.category ?? "");
+  const [category, setCategory] = useState(
+    initial?.category ?? CATEGORY_OPTIONS[0] ?? "",
+  );
   const [price, setPrice] = useState<number>(initial?.price ?? 0);
   const [stock, setStock] = useState<number>(initial?.stock ?? 0);
   const [status, setStatus] = useState(initial?.status ?? "Aktif");
@@ -150,12 +169,25 @@ export function ProductForm({ initial }: { initial?: Product | null }) {
         </label>
         <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
           Kategori
-          <input
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-            placeholder="Kategori"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          />
+          <div className="relative">
+            <select
+              className="w-full appearance-none rounded-xl border border-slate-200 px-3 py-2 pr-8 text-sm"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              {!CATEGORY_OPTIONS.includes(category) && (
+                <option value={category || ""}>
+                  {category ? category : "Pilih kategori"}
+                </option>
+              )}
+              {CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          </div>
         </label>
         <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
           Harga (Rp)
