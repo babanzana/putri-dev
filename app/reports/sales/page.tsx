@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { onValue, ref } from "firebase/database";
 import { Shell } from "../../components/Shell";
-import { Badge } from "../../components/ui";
 import { db } from "../../lib/firebase";
 import { useAuth } from "../../components/AuthProvider";
 
@@ -23,12 +22,12 @@ const formatDate = (ts?: number) =>
 
 export default function ReportsSalesPage() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
-  const [currentUserName, setCurrentUserName] = useState("-");
-  const [currentUserRole, setCurrentUserRole] = useState("-");
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
   const { user } = useAuth();
+  const currentUserName = user?.name || user?.email || "-";
+  const currentUserRole = user?.role || "-";
 
   useEffect(() => {
     const ordersRef = ref(db, "orders");
@@ -67,12 +66,10 @@ export default function ReportsSalesPage() {
   );
 
   useEffect(() => {
-    setCurrentUserName(user?.name || user?.email || "-");
-    setCurrentUserRole(user?.role || "-");
-    if (typeof window !== "undefined") {
-      (window as any).__reportUser = `${user?.name || user?.email || "-"} (${user?.role || "-"})`;
-    }
-  }, [user?.email, user?.name, user?.role]);
+    if (typeof window === "undefined") return;
+    const w = window as Window & { __reportUser?: string };
+    w.__reportUser = `${currentUserName} (${currentUserRole})`;
+  }, [currentUserName, currentUserRole]);
 
   const handlePrint = () => {
     const html = `

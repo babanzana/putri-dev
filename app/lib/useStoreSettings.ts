@@ -59,13 +59,18 @@ export function useStoreSettings() {
     const unsub = onValue(settingsRef, (snap) => {
       const val = snap.val() as StoreSettings | null;
       if (val) {
+        const status = {
+          storeOpen: val.status?.storeOpen ?? defaultSettings.status?.storeOpen ?? true,
+          courierAvailable:
+            val.status?.courierAvailable ?? defaultSettings.status?.courierAvailable ?? true,
+        };
         setSettings({
           ...defaultSettings,
           ...val,
           storeInfo: { ...defaultSettings.storeInfo, ...(val.storeInfo || {}) },
           contact: { ...defaultSettings.contact, ...(val.contact || {}) },
           socialMedia: { ...defaultSettings.socialMedia, ...(val.socialMedia || {}) },
-          status: { ...defaultSettings.status, ...(val.status || {}) },
+          status,
           bankAccounts: Array.isArray(val.bankAccounts) ? val.bankAccounts : [],
         });
       } else {

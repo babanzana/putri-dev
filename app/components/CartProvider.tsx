@@ -1,7 +1,7 @@
 "use client";
 
 import { onValue, ref } from "firebase/database";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "../lib/firebase";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "./AuthProvider";
@@ -60,12 +60,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [productMap, setProductMap] = useState<Record<string, Product>>({});
   const storageKey = user?.uid ? `${STORAGE_PREFIX}-${user.uid}` : `${STORAGE_PREFIX}-guest`;
-  const [storageReady, setStorageReady] = useState(false);
+  const storageReadyRef = useRef(false);
   const resolvedCache = useMemo<Record<string, string>>(() => ({}), []);
 
+  // Sync cart state with localStorage when the active user changes.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setStorageReady(false);
+    storageReadyRef.current = false;
     const raw = localStorage.getItem(storageKey);
     if (raw) {
       try {
@@ -78,13 +80,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } else {
       setItems([]);
     }
-    setStorageReady(true);
+    storageReadyRef.current = true;
   }, [storageKey]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
-    if (typeof window === "undefined" || !storageReady) return;
+    if (typeof window === "undefined" || !storageReadyRef.current) return;
     localStorage.setItem(storageKey, JSON.stringify(items));
-  }, [items, storageKey, storageReady]);
+  }, [items, storageKey]);
 
   useEffect(() => {
     const productsRef = ref(db, "products");
@@ -214,7 +217,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (changed) setItems(updated);
     };
     void resolveImages();
-  }, [items]);
+  }, [items, resolvedCache]);
 
   const value: CartContextValue = {
     items,

@@ -36,6 +36,8 @@ export default function HistoryPage() {
   const [proofUrl, setProofUrl] = useState<string | null>(null);
   const [proofUploading, setProofUploading] = useState(false);
   const [proofError, setProofError] = useState<string | null>(null);
+  const [markingDone, setMarkingDone] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
   const [startDate, setStartDate] = useState(todayStr);
   const [endDate, setEndDate] = useState(todayStr);
@@ -124,6 +126,25 @@ export default function HistoryPage() {
     } finally {
       setProofUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleMarkReceived = async () => {
+    if (!selected) return;
+    setMarkingDone(true);
+    setActionError(null);
+    const updates = { status: "Selesai", updatedAt: Date.now() };
+    try {
+      await Promise.all([
+        update(ref(db, `orders/${selected.id}`), updates),
+        update(ref(db, `userOrders/${selected.userId}/${selected.id}`), updates).catch(() => null),
+      ]);
+      setSelected((prev) => (prev ? { ...prev, ...updates } : prev));
+      setOrders((prev) => prev.map((o) => (o.id === selected.id ? { ...o, ...updates } : o)));
+    } catch {
+      setActionError("Gagal memperbarui status, coba lagi.");
+    } finally {
+      setMarkingDone(false);
     }
   };
 
@@ -355,7 +376,24 @@ export default function HistoryPage() {
                 </div>
               )}
             </div>
-            <div className="mt-5 flex justify-end">
+            {actionError && (
+              <p className="mt-3 text-xs font-semibold text-rose-600">{actionError}</p>
+            )}
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              {selected.status === "Pengiriman" && (
+                <button
+                  type="button"
+                  onClick={handleMarkReceived}
+                  disabled={markingDone}
+                  className={`rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm ${
+                    markingDone
+                      ? "bg-slate-300"
+                      : "bg-gradient-to-r from-emerald-500 to-teal-600"
+                  }`}
+                >
+                  {markingDone ? "Memperbarui..." : "Pesanan Diterima"}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setSelected(null)}

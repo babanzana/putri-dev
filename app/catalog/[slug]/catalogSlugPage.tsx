@@ -8,9 +8,9 @@ import { Badge } from "../../components/ui";
 import { useCart } from "../../components/CartProvider";
 import { db } from "../../lib/firebase";
 import { supabase } from "../../lib/supabaseClient";
+import type { Product } from "../../lib/dummyData";
 import fallbackImg from "../../assets/loading-image.jpg";
 const placeholder = fallbackImg.src;
-import type { Product } from "../../lib/dummyData";
 type ViewProduct = Product & { rawImages: string[] };
 export default function CatalogDetailPage() {
   const router = useRouter();
