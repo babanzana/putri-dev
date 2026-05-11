@@ -1,5 +1,5 @@
 "use client";
-import { onValue, ref, remove } from "firebase/database";
+import { onValue, ref, update } from "firebase/database";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
@@ -73,11 +73,11 @@ export default function ProductsPage() {
     });
   }, [products, search, category, status]);
 
-  const handleDelete = async (slug: string) => {
+  const handleDeactivate = async (slug: string) => {
     try {
-      await remove(ref(db, `products/${slug}`));
+      await update(ref(db, `products/${slug}`), { status: "Nonaktif" });
     } catch {
-      setError("Gagal menghapus produk.");
+      setError("Gagal menonaktifkan produk.");
     }
   };
 
@@ -196,10 +196,10 @@ export default function ProductsPage() {
                     Edit
                   </Link>
                   <button
-                    className="rounded-lg border border-slate-200 px-3 py-1 hover:border-rose-300 hover:text-rose-800"
+                    className="rounded-lg border border-slate-200 px-3 py-1 hover:border-orange-300 hover:text-orange-800"
                     onClick={() => setPendingDelete(p)}
                   >
-                    Hapus
+                    Nonaktifkan
                   </button>
                 </div>
               </td>
@@ -223,10 +223,10 @@ export default function ProductsPage() {
         {pendingDelete && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
-              <h3 className="text-lg font-semibold text-slate-900">Hapus produk?</h3>
+              <h3 className="text-lg font-semibold text-slate-900">Nonaktifkan produk?</h3>
               <p className="mt-1 text-sm text-slate-600">
-                Produk <span className="font-semibold">{pendingDelete.name}</span> akan dihapus
-                permanen dari database. Lanjutkan?
+                Produk <span className="font-semibold">{pendingDelete.name}</span> akan dinonaktifkan
+                (tidak dihapus permanen, masih bisa diaktifkan kembali). Lanjutkan?
               </p>
               <div className="mt-4 flex justify-end gap-2">
                 <button
@@ -238,13 +238,13 @@ export default function ProductsPage() {
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg bg-gradient-to-r from-rose-500 to-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm"
+                  className="rounded-lg bg-gradient-to-r from-orange-500 to-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm"
                   onClick={async () => {
-                    await handleDelete(pendingDelete.slug);
+                    await handleDeactivate(pendingDelete.slug);
                     setPendingDelete(null);
                   }}
                 >
-                  Ya, hapus
+                  Ya, nonaktifkan
                 </button>
               </div>
             </div>

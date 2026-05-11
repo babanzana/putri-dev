@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Shell } from "../../components/Shell";
 import { Badge } from "../../components/ui";
 import { useCart } from "../../components/CartProvider";
+import { useAuth } from "../../components/AuthProvider";
 import { db } from "../../lib/firebase";
 import { supabase } from "../../lib/supabaseClient";
 import type { Product } from "../../lib/dummyData";
@@ -26,7 +27,18 @@ export default function CatalogDetailPage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [qty, setQty] = useState(1);
   const { addItem, qtyBySlug } = useCart();
+  const { isAuthenticated } = useAuth();
   const [added, setAdded] = useState(false);
+
+  const handleAddToCart = () => {
+    if (!isAuthenticated) {
+      router.push("/login");
+      return;
+    }
+    addItem(product!.slug, qty);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1200);
+  };
   useEffect(() => {
     const productsRef = ref(db, "products");
     const unsub = onValue(productsRef, (snap) => {
@@ -106,7 +118,7 @@ export default function CatalogDetailPage() {
   }, [product, products]);
   if (loading) {
     return (
-      <Shell active="catalog" requiresAuth>
+      <Shell active="catalog">
         {" "}
         <div className="mx-auto max-w-5xl rounded-2xl bg-white/80 px-4 py-6 text-sm text-slate-600 ring-1 ring-slate-200">
           {" "}
@@ -123,7 +135,7 @@ export default function CatalogDetailPage() {
       (prev) => (prev - 1 + product.images.length) % product.images.length,
     );
   return (
-    <Shell active="catalog" requiresAuth>
+    <Shell active="catalog">
       {" "}
       <div className="mx-auto max-w-5xl space-y-6">
         {" "}
@@ -237,18 +249,16 @@ export default function CatalogDetailPage() {
                 </div>
                 <button
                   className="flex-1 rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm"
-                  onClick={() => {
-                    addItem(product.slug, qty);
-                    setAdded(true);
-                    setTimeout(() => setAdded(false), 1200);
-                  }}
+                  onClick={handleAddToCart}
                   type="button"
                 >
-                  Tambah ke Keranjang
+                  {isAuthenticated ? "Tambah ke Keranjang" : "Login untuk Memesan"}
                 </button>
-                <span className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
-                  Dalam keranjang: {qtyBySlug(product.slug)}
-                </span>
+                {isAuthenticated && (
+                  <span className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+                    Dalam keranjang: {qtyBySlug(product.slug)}
+                  </span>
+                )}
               </div>
             ) : (
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500">

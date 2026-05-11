@@ -1,7 +1,7 @@
 "use client";
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ref, set } from "firebase/database";
+import { get, ref, set } from "firebase/database";
 import { ChevronDown } from "lucide-react";
 import { db } from "../lib/firebase";
 import { supabase } from "../lib/supabaseClient";
@@ -124,6 +124,16 @@ export function ProductForm({ initial }: { initial?: Product | null }) {
     }
     setSaving(true);
     setError(null);
+
+    if (!initial) {
+      const existing = await get(ref(db, `products/${slug}`));
+      if (existing.exists()) {
+        setError("Produk sudah ada.");
+        setSaving(false);
+        return;
+      }
+    }
+
     const finalStatus = status === "Nonaktif" ? "Nonaktif" : stock <= 5 ? "Stok Menipis" : "Aktif";
     const payload: Product = {
       slug,

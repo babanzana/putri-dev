@@ -26,6 +26,10 @@ export default function RegisterPage() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSubmitting) return;
+    if (password.length < 10) {
+      setError("Password minimal 10 karakter.");
+      return;
+    }
     if (password !== confirmPassword) {
       setError("Password dan konfirmasi tidak sama.");
       return;
@@ -150,7 +154,7 @@ export default function RegisterPage() {
                   {" "}
                   <input
                     className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 pr-12 text-sm"
-                    placeholder="Minimal 8 karakter"
+                    placeholder="Minimal 10 karakter"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}

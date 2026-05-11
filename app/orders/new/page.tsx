@@ -1,12 +1,13 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, ChangeEvent } from "react";
-import { onValue, ref, set } from "firebase/database";
+import { onValue, ref, set, update } from "firebase/database";
 import { ChevronDown, Upload } from "lucide-react";
 import { Shell } from "../../components/Shell";
 import { db } from "../../lib/firebase";
 import { supabase } from "../../lib/supabaseClient";
 import { normalizeImage } from "../../lib/image";
+import { generateOrderId } from "../../lib/orderUtils";
 
 type ProductCard = {
   slug: string;
@@ -202,7 +203,7 @@ export default function OrderNewPage() {
       setError("Nama pelanggan wajib diisi.");
       return;
     }
-    const id = `ORD-${Date.now()}`;
+    const id = await generateOrderId();
     setSaving(true);
     setError(null);
     try {

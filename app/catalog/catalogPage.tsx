@@ -4,9 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Filter, ShoppingCart } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Shell } from "../components/Shell";
 import { Badge } from "../components/ui";
 import { useCart } from "../components/CartProvider";
+import { useAuth } from "../components/AuthProvider";
 import { db } from "../lib/firebase";
 import { supabase } from "../lib/supabaseClient";
 import type { Product } from "../lib/dummyData";
@@ -22,6 +24,8 @@ export default function CatalogPage() {
   const [category, setCategory] = useState("Semua");
   const [justAdded, setJustAdded] = useState<string | null>(null);
   const { addItem, qtyBySlug } = useCart();
+  const { isAuthenticated } = useAuth();
+  const router = useRouter();
   useEffect(() => {
     const productsRef = ref(db, "products");
     const unsub = onValue(productsRef, (snap) => {
@@ -106,8 +110,17 @@ export default function CatalogPage() {
     const t = setTimeout(() => setJustAdded(null), 1200);
     return () => clearTimeout(t);
   }, [justAdded]);
+  const handleAddToCart = (slug: string) => {
+    if (!isAuthenticated) {
+      router.push("/login");
+      return;
+    }
+    addItem(slug, 1);
+    setJustAdded(slug);
+  };
+
   return (
-    <Shell active="catalog" requiresAuth>
+    <Shell active="catalog">
       {" "}
       <div className="space-y-4">
         {" "}
@@ -220,19 +233,18 @@ export default function CatalogPage() {
                   </Link>{" "}
                   {p.stock > 0 ? (
                     <button
-                      onClick={() => {
-                        addItem(p.slug, 1);
-                        setJustAdded(p.slug);
-                      }}
+                      onClick={() => handleAddToCart(p.slug)}
                       className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-amber-400 via-orange-500 to-orange-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:from-amber-500 hover:to-orange-700"
                     >
                       <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/15">
                         <ShoppingCart className="h-3.5 w-3.5" />
                       </span>
-                      Keranjang
-                      <span className="rounded-full bg-white/20 px-2 py-[2px] text-[10px] font-bold">
-                        {qtyBySlug(p.slug)}
-                      </span>
+                      {isAuthenticated ? "Keranjang" : "Login untuk beli"}
+                      {isAuthenticated && (
+                        <span className="rounded-full bg-white/20 px-2 py-[2px] text-[10px] font-bold">
+                          {qtyBySlug(p.slug)}
+                        </span>
+                      )}
                     </button>
                   ) : (
                     <div className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-center text-[11px] font-semibold text-slate-400">

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChangeEvent, useEffect, useState } from "react";
-import { Banknote, MessageCircle } from "lucide-react";
+import { Banknote, MessageCircle, Printer } from "lucide-react";
 import { Shell } from "../components/Shell";
 import { Badge } from "../components/ui";
 import { useCart } from "../components/CartProvider";
@@ -12,6 +12,7 @@ import { useAuth } from "../components/AuthProvider";
 import { db } from "../lib/firebase";
 import { supabase } from "../lib/supabaseClient";
 import { useStoreSettings } from "../lib/useStoreSettings";
+import { generateOrderId } from "../lib/orderUtils";
 export default function CheckoutPage() {
   const router = useRouter();
   const { selectedItems, totalPrice, clear } = useCart();
@@ -30,6 +31,17 @@ export default function CheckoutPage() {
   const [proofError, setProofError] = useState<string | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState<{
+    orderId: string;
+    recipient: string;
+    phone: string;
+    address: string;
+    items: typeof selectedItems;
+    subtotal: number;
+    shipping: number;
+    total: number;
+    createdAt: number;
+  } | null>(null);
   const removeProofFromStorage = async (path: string) => {
     try {
       await supabase.storage.from("putridev").remove([path]);
@@ -155,7 +167,7 @@ export default function CheckoutPage() {
     }
     setSaveError(null);
     setSavingOrder(true);
-    const orderId = `ORD-${Date.now()}`;
+    const orderId = await generateOrderId();
     const shippingFee = 15000;
     const payload = {
       id: orderId,
@@ -195,7 +207,17 @@ export default function CheckoutPage() {
       );
       setPaid(true);
       clear();
-      setTimeout(() => router.push("/history"), 800);
+      setReceipt({
+        orderId,
+        recipient: recipient || user.name,
+        phone,
+        address,
+        items: selectedItems,
+        subtotal: totalPrice,
+        shipping: shippingFee,
+        total: totalPrice + shippingFee,
+        createdAt: Date.now(),
+      });
     } catch (err) {
       setSaveError("Gagal menyimpan transaksi, coba lagi.");
     } finally {
@@ -440,6 +462,70 @@ export default function CheckoutPage() {
           </Link>{" "}
         </div>{" "}
       </div>{" "}
+      {receipt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4">
+            <div className="text-center space-y-1">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Ponti Pratama</p>
+              <h2 className="text-xl font-bold text-slate-900">Struk Transaksi</h2>
+              <p className="text-xs text-slate-500">{new Date(receipt.createdAt).toLocaleString("id-ID")}</p>
+              <p className="text-sm font-semibold text-amber-700">{receipt.orderId}</p>
+            </div>
+            <div className="text-xs text-slate-600 space-y-1 border-t border-dashed border-slate-200 pt-3">
+              <p><span className="font-semibold">Penerima:</span> {receipt.recipient}</p>
+              <p><span className="font-semibold">No. HP:</span> {receipt.phone || "-"}</p>
+              <p><span className="font-semibold">Alamat:</span> {receipt.address || "-"}</p>
+            </div>
+            <div className="border-t border-dashed border-slate-200 pt-3 space-y-1">
+              {receipt.items.map((item) => (
+                <div key={item.slug} className="flex justify-between text-xs text-slate-700">
+                  <span className="flex-1">{item.name} x{item.qty}</span>
+                  <span>Rp {(item.qty * item.price).toLocaleString("id-ID")}</span>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-dashed border-slate-200 pt-3 space-y-1 text-xs text-slate-700">
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span>Rp {receipt.subtotal.toLocaleString("id-ID")}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Ongkir</span>
+                <span>Rp {receipt.shipping.toLocaleString("id-ID")}</span>
+              </div>
+              <div className="flex justify-between font-bold text-slate-900 text-sm">
+                <span>Total</span>
+                <span>Rp {receipt.total.toLocaleString("id-ID")}</span>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const w = window.open("", "_blank");
+                  if (w) {
+                    w.document.write(`<html><head><title>Struk ${receipt.orderId}</title><style>body{font-family:Arial,sans-serif;padding:24px;max-width:400px;margin:0 auto}h2{text-align:center}table{width:100%;border-collapse:collapse;font-size:12px}td{padding:4px 0}.total{font-weight:bold;font-size:14px}.dashed{border-top:1px dashed #ccc;margin:8px 0}.label{color:#666;font-size:11px;text-align:center}</style></head><body><p class="label">Ponti Pratama</p><h2>Struk Transaksi</h2><p class="label">${receipt.orderId}</p><p class="label">${new Date(receipt.createdAt).toLocaleString("id-ID")}</p><div class="dashed"></div><p style="font-size:12px"><b>Penerima:</b> ${receipt.recipient}<br><b>No. HP:</b> ${receipt.phone || "-"}<br><b>Alamat:</b> ${receipt.address || "-"}</p><div class="dashed"></div><table>${receipt.items.map((i) => `<tr><td>${i.name} x${i.qty}</td><td style="text-align:right">Rp ${(i.qty * i.price).toLocaleString("id-ID")}</td></tr>`).join("")}</table><div class="dashed"></div><table><tr><td>Subtotal</td><td style="text-align:right">Rp ${receipt.subtotal.toLocaleString("id-ID")}</td></tr><tr><td>Ongkir</td><td style="text-align:right">Rp ${receipt.shipping.toLocaleString("id-ID")}</td></tr><tr class="total"><td>Total</td><td style="text-align:right">Rp ${receipt.total.toLocaleString("id-ID")}</td></tr></table></body></html>`);
+                    w.document.close();
+                    w.focus();
+                    w.print();
+                  }
+                }}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm"
+              >
+                <Printer className="h-4 w-4" />
+                Cetak Struk
+              </button>
+              <button
+                type="button"
+                onClick={() => { setReceipt(null); router.push("/history"); }}
+                className="flex-1 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700"
+              >
+                Tutup & Lihat Riwayat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showProofModal && proofPreview && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"

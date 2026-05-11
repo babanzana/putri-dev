@@ -78,6 +78,7 @@ const navIcon: Record<NavKey, JSX.Element> = {
 };
 
 const publicNav: NavItem[] = [
+  { key: "catalog", label: "Katalog", href: "/catalog" },
   { key: "login", label: "Login", href: "/login" },
   { key: "register", label: "Register", href: "/register" },
 ];

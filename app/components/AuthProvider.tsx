@@ -5,6 +5,7 @@ import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  signInAnonymously,
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
@@ -100,7 +101,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (fbUser) => {
-      setUser(fbUser ? mapFirebaseUser(fbUser) : null);
+      if (fbUser && !fbUser.isAnonymous) {
+        setUser(mapFirebaseUser(fbUser));
+      } else if (!fbUser) {
+        // Sign in anonymously so Firebase rules (auth != null) are satisfied
+        // for reading public data like the product catalog.
+        signInAnonymously(auth).catch(() => {});
+        setUser(null);
+      } else {
+        // fbUser is anonymous — Firebase data is readable, but user is treated as not logged in
+        setUser(null);
+      }
       setHydrated(true);
     });
     return () => unsub();
