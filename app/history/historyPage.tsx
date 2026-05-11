@@ -394,6 +394,15 @@ export default function HistoryPage() {
                   {markingDone ? "Memperbarui..." : "Pesanan Diterima"}
                 </button>
               )}
+              {selected.status === "Selesai" && (
+                <button
+                  type="button"
+                  onClick={() => window.open(`/nota/${selected.id}`, "_blank")}
+                  className="rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:from-amber-600 hover:to-orange-600"
+                >
+                  Cetak Nota
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setSelected(null)}

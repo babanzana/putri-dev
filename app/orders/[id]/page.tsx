@@ -405,7 +405,7 @@ export default function OrderEditPage() {
             {error && (
               <p className="text-xs font-semibold text-rose-600">{error}</p>
             )}
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 type="submit"
                 disabled={saving}
@@ -417,6 +417,15 @@ export default function OrderEditPage() {
               >
                 {saving ? "Menyimpan..." : "Simpan"}
               </button>
+              {status === "Selesai" && (
+                <button
+                  type="button"
+                  onClick={() => window.open(`/nota/${order.id}`, "_blank")}
+                  className="rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:from-amber-600 hover:to-orange-600"
+                >
+                  Cetak Nota
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => router.push("/orders")}
